@@ -1,18 +1,19 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import test from "node:test";
+import { newDb } from "pg-mem";
 import { createApp } from "../src/server.ts";
-import { JsonAuditStore } from "../src/store.ts";
+import { PostgresAuditStore } from "../src/store.ts";
 
 test("creates a case, writes audit events, and records human approval", async (t) => {
-  const baseDir = await mkdtemp(join(tmpdir(), "chainops-"));
-  const store = new JsonAuditStore(join(baseDir, "audit-log.json"));
+  const store = await createTestStore();
   const app = createApp(store);
 
   await new Promise<void>((resolve) => app.listen(0, resolve));
-  t.after(() => app.close());
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
 
   const address = app.address();
   assert.equal(typeof address, "object");
@@ -63,12 +64,14 @@ test("creates a case, writes audit events, and records human approval", async (t
 });
 
 test("returns a validation failure without creating a case", async (t) => {
-  const baseDir = await mkdtemp(join(tmpdir(), "chainops-"));
-  const store = new JsonAuditStore(join(baseDir, "audit-log.json"));
+  const store = await createTestStore();
   const app = createApp(store);
 
   await new Promise<void>((resolve) => app.listen(0, resolve));
-  t.after(() => app.close());
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
 
   const address = app.address();
   assert.equal(typeof address, "object");
@@ -89,3 +92,66 @@ test("returns a validation failure without creating a case", async (t) => {
   assert.equal(readinessBody.store.caseCount, 0);
   assert.equal(readinessBody.store.auditEventCount, 0);
 });
+
+test("replays duplicate intake requests when the same idempotency key is supplied", async (t) => {
+  const store = await createTestStore();
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const requestHeaders = {
+    "content-type": "application/json",
+    "idempotency-key": "wallet-1111"
+  };
+
+  const firstResponse = await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: requestHeaders,
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+  const secondResponse = await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: requestHeaders,
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+
+  assert.equal(firstResponse.status, 201);
+  assert.equal(secondResponse.status, 200);
+
+  const firstBody = await firstResponse.json();
+  const secondBody = await secondResponse.json();
+
+  assert.equal(secondBody.replayed, true);
+  assert.equal(secondBody.caseRecord.id, firstBody.caseRecord.id);
+  assert.equal(secondBody.auditEvents.length, firstBody.auditEvents.length);
+
+  const readiness = await fetch(`${baseUrl}/ready`);
+  const readinessBody = await readiness.json();
+  assert.equal(readinessBody.store.caseCount, 1);
+  assert.equal(readinessBody.store.auditEventCount, 5);
+});
+
+async function createTestStore(): Promise<PostgresAuditStore> {
+  const schema = `test_${randomUUID().replaceAll("-", "_")}`;
+  const databaseUrl = process.env.CHAINOPS_DATABASE_URL;
+  const store = databaseUrl
+    ? new PostgresAuditStore(databaseUrl, schema)
+    : createMemoryStore(schema);
+  await store.init();
+  return store;
+}
+
+function createMemoryStore(schema: string): PostgresAuditStore {
+  const db = newDb();
+  const pgAdapter = db.adapters.createPg();
+  const pool = new pgAdapter.Pool();
+  return new PostgresAuditStore({ pool, schema });
+}

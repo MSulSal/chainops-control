@@ -8,7 +8,8 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - Wallet-address validation.
 - Deterministic transaction fixture for local development.
 - Transparent risk indicators.
-- JSON audit adapter for cases, transaction samples, and audit events.
+- PostgreSQL-backed cases, transaction samples, and immutable audit events.
+- Duplicate-intake protection through the `Idempotency-Key` header.
 - Human approval/rejection endpoint.
 - Health and readiness endpoints.
 - Structured logs and request trace IDs.
@@ -17,6 +18,8 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 ## Run
 
 ```powershell
+docker compose up -d postgres
+$env:CHAINOPS_DATABASE_URL = "postgres://chainops:chainops@127.0.0.1:5432/chainops"
 npm test
 npm start
 ```
@@ -39,6 +42,12 @@ Example intake body:
 }
 ```
 
+Optional intake header:
+
+```text
+Idempotency-Key: wallet-1111
+```
+
 Example approval body:
 
 ```json
@@ -50,11 +59,9 @@ Example approval body:
 
 ## Roadmap
 
-1. Replace the JSON audit adapter with PostgreSQL in Docker Compose.
-2. Add idempotency checks for duplicate intake requests.
-3. Add a read-only Ethereum data adapter with retry and provider-failure handling.
-4. Add a reviewer dashboard for status, evidence, errors, retries, and trace IDs.
-5. Add metrics, traces, and release/rollback documentation.
+1. Add a read-only Ethereum data adapter with retry and provider-failure handling.
+2. Add a reviewer dashboard for status, evidence, errors, retries, and trace IDs.
+3. Add metrics, traces, and release/rollback documentation.
 
 ## Boundaries
 

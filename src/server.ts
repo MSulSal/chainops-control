@@ -1,12 +1,12 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { fileURLToPath } from "node:url";
-import { JsonAuditStore } from "./store.ts";
+import { type AuditStore, PostgresAuditStore } from "./store.ts";
 import { getTraceId, writeStructuredLog } from "./logger.ts";
 import { normalizeApprovalDecision } from "./domain.ts";
 
 type JsonBody = Record<string, unknown>;
 
-export function createApp(store: JsonAuditStore) {
+export function createApp(store: AuditStore) {
   return createHttpServer(async (request, response) => {
     const url = new URL(request.url ?? "/", "http://localhost");
     const headers = new Headers(request.headers as Record<string, string>);
@@ -30,16 +30,18 @@ export function createApp(store: JsonAuditStore) {
         const created = await store.createCase({
           walletAddress: String(body.walletAddress ?? ""),
           traceId,
-          now: new Date().toISOString()
+          now: new Date().toISOString(),
+          idempotencyKey: headers.get("idempotency-key")?.trim() || undefined
         });
 
         writeStructuredLog("case.created", {
           traceId,
           caseId: created.caseRecord.id,
-          riskLevel: created.caseRecord.risk.level
+          riskLevel: created.caseRecord.risk.level,
+          replayed: created.replayed
         });
 
-        return sendJson(response, 201, created);
+        return sendJson(response, created.replayed ? 200 : 201, created);
       }
 
       const caseMatch = url.pathname.match(/^\/cases\/([^/]+)$/);
@@ -107,11 +109,14 @@ function sendJson(response: ServerResponse, status: number, body: unknown): void
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.PORT ?? 4317);
-  const dataPath = process.env.CHAINOPS_DATA_PATH ?? fileURLToPath(new URL("../data/audit-log.json", import.meta.url));
-  const store = new JsonAuditStore(dataPath);
+  const databaseUrl =
+    process.env.CHAINOPS_DATABASE_URL ?? "postgres://chainops:chainops@127.0.0.1:5432/chainops";
+  const schema = process.env.CHAINOPS_SCHEMA ?? "public";
+  const store = new PostgresAuditStore(databaseUrl, schema);
   const app = createApp(store);
 
+  await store.init();
   app.listen(port, () => {
-    writeStructuredLog("service.started", { port, dataPath });
+    writeStructuredLog("service.started", { port, schema, databaseConfigured: true });
   });
 }

@@ -12,14 +12,14 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 
 - Refresh: runtime and event loop, typed request/response contracts, schema validation, error handling, abort/timeouts, queues, idempotency, and integration testing.
 - Applied in slice 1: REST API, wallet validation, deterministic ingestion fixture, health/readiness, failure responses, structured logs, trace IDs, and Node integration tests.
-- Next application step: keep the same API contract while adding PostgreSQL persistence and idempotent storage constraints.
+- Applied in slice 2: optional `Idempotency-Key` header, replay-safe duplicate intake, transaction-bound SQL writes, and database-backed integration tests.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL
 
 - Refresh: schema constraints, indexes, transactions, upserts, JSONB tradeoffs, migrations, query plans, audit/event tables.
-- Apply next: cases, normalized transactions, immutable audit events, deterministic analytics queries.
-- Current slice note: JSON-file persistence is only a local adapter for the audit shape; do not claim PostgreSQL until Docker Compose and SQL tests exist.
+- Applied in slice 2: cases table, normalized transactions table, immutable audit-events table, schema bootstrapping, indexes, and CI-backed PostgreSQL tests.
+- Next application step: add a read-only chain-data adapter with retry behavior and preserve idempotent storage under provider failures.
 - Docs: https://www.postgresql.org/docs/current/
 
 ## Ethereum data API

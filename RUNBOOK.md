@@ -4,6 +4,8 @@
 
 ```powershell
 cd chainops-control
+$env:CHAINOPS_DATABASE_URL = "postgres://chainops:chainops@127.0.0.1:5432/chainops"
+docker compose up -d postgres
 npm test
 npm start
 ```
@@ -24,6 +26,7 @@ Expected result:
 - `caseRecord.risk.level` is `high` for the flagged fixture wallet.
 - Five audit events are written: intake, validation, ingestion, risk, and human-review pending.
 - The `x-trace-id` response header matches the supplied request id.
+- PostgreSQL stores one case row, three transaction rows, and five audit-event rows.
 
 ## Human approval
 
@@ -41,5 +44,5 @@ Submit an invalid wallet, such as `bad`, to `POST /cases`. The service returns H
 ## Current limits
 
 - Transaction ingestion is deterministic synthetic data, not a live Ethereum provider call.
-- The local audit store is a JSON-file adapter shaped like the planned SQL records; PostgreSQL is the next slice.
+- PostgreSQL is local Docker Compose infrastructure only; there is no cloud deployment or managed database.
 - Risk indicators are deterministic and human approval is mandatory.

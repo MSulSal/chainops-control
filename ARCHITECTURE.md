@@ -5,7 +5,7 @@
 ```text
 Implemented local slice
   -> Node.js / TypeScript REST API
-      -> JSON audit adapter (cases, deterministic transactions, audit events)
+      -> PostgreSQL store (cases, deterministic transactions, audit events)
       -> deterministic risk rules
       -> human approval endpoint
       -> health/readiness endpoints
@@ -14,7 +14,7 @@ Implemented local slice
 Planned production-shaped progression
   -> Next.js web
       -> Node.js / TypeScript REST API
-          -> PostgreSQL (cases, transactions, audit log)
+          -> PostgreSQL (cases, transactions, audit log, idempotency key)
           -> ingestion worker / retry queue
           -> Ethereum JSON-RPC or Etherscan adapter
       -> OpenTelemetry collector
@@ -36,9 +36,9 @@ Planned production-shaped progression
 - Deterministic code computes indicators; a human owns review decisions.
 - Every external response is validated and stored with source/time metadata.
 
-## 2026-06-27 slice decision
+## 2026-06-29 slice decision
 
-The first runnable service uses a JSON-file audit adapter instead of pretending PostgreSQL exists before the local database is wired. The API contract and audit-event shape are intentionally close to the planned SQL records, so the next slice can replace the adapter with PostgreSQL and keep the behavior tests focused on the workflow rather than storage internals.
+The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.
 
 ## 2026-06-23 service-boundary decision
 

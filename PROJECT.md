@@ -16,7 +16,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 ## Build slices
 
 - Slice 1: implemented local TypeScript service with wallet case intake, validation, deterministic transaction fixture, risk result, immutable audit-event log, human approval state, health/readiness endpoints, structured logs, trace IDs, Docker Compose definition, and Node test coverage.
-- Slice 2: replace the JSON audit adapter with PostgreSQL in Docker Compose while keeping the API contract and tests.
+- Slice 2: implemented PostgreSQL persistence in Docker Compose, schema bootstrapping, CI-backed database tests, and duplicate-intake replay through `Idempotency-Key`.
 - Slice 3: Ethereum JSON-RPC/Etherscan adapter, validation, idempotent ingestion, retry tests.
 - Slice 4: deterministic analytics and SQL-backed case timeline.
 - Slice 5: reviewer notes, evidence summaries, and approval/rejection workflow history.
