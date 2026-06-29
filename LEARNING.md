@@ -19,13 +19,13 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 
 - Refresh: schema constraints, indexes, transactions, upserts, JSONB tradeoffs, migrations, query plans, audit/event tables.
 - Applied in slice 2: cases table, normalized transactions table, immutable audit-events table, schema bootstrapping, indexes, and CI-backed PostgreSQL tests.
-- Next application step: add a read-only chain-data adapter with retry behavior and preserve idempotent storage under provider failures.
+- Applied in slice 3: JSONB source metadata on cases, persisted provider-failure audit events, and same-case recovery when a previously failed idempotent intake succeeds on retry.
 - Docs: https://www.postgresql.org/docs/current/
 
 ## Ethereum data API
 
 - Refresh: addresses, transactions, blocks, confirmations, JSON-RPC, rate limits, chain/reorg caveats.
-- Apply: public read-only ingestion with bounded history, validation, retries, and source metadata.
+- Applied in slice 3: an Etherscan-compatible read-only transaction adapter with bounded history, abort-based timeouts, retry behavior, and deterministic local fallback for tests and offline runs.
 - Docs: https://ethereum.org/en/developers/apis/json-rpc/ | https://docs.etherscan.io/
 
 ## Docker and Terraform
@@ -46,6 +46,7 @@ Be able to explain:
 
 1. Why keep the first service boundary in TypeScript/Node.js instead of adding a new language?
 2. How is ingestion idempotent and how are reorgs or provider failures represented?
+   Provider failures create `ingestion_failed` state plus immutable audit events; the same idempotency key retries the original case instead of minting a second one.
 3. Which decisions are deterministic and which belong to a reviewer?
 4. How do schema validation, audit events, and human approval reduce case-review risk?
 5. What would change between Docker Compose and a production deployment?

@@ -5,7 +5,8 @@
 ```text
 Implemented local slice
   -> Node.js / TypeScript REST API
-      -> PostgreSQL store (cases, deterministic transactions, audit events)
+      -> Ethereum provider seam (Etherscan-compatible adapter or deterministic fixture fallback)
+      -> PostgreSQL store (cases, source metadata, transactions, audit events)
       -> deterministic risk rules
       -> human approval endpoint
       -> health/readiness endpoints
@@ -35,6 +36,10 @@ Planned production-shaped progression
 - No private keys, wallet signing, funds, custody, or automated enforcement.
 - Deterministic code computes indicators; a human owns review decisions.
 - Every external response is validated and stored with source/time metadata.
+
+## 2026-06-29 provider-slice decision
+
+The current ingestion boundary uses an Etherscan-compatible read-only adapter with timeout and retry behavior, but keeps a deterministic fallback provider for local development and tests. Provider failures are persisted as `ingestion_failed` cases with immutable audit events so the same `Idempotency-Key` can recover the original case instead of creating a duplicate row when a retry succeeds later.
 
 ## 2026-06-29 slice decision
 

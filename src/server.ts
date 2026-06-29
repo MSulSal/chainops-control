@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { type AuditStore, PostgresAuditStore } from "./store.ts";
 import { getTraceId, writeStructuredLog } from "./logger.ts";
 import { normalizeApprovalDecision } from "./domain.ts";
+import { createDefaultTransactionProviderFromEnv } from "./provider.ts";
 
 type JsonBody = Record<string, unknown>;
 
@@ -38,10 +39,18 @@ export function createApp(store: AuditStore) {
           traceId,
           caseId: created.caseRecord.id,
           riskLevel: created.caseRecord.risk.level,
-          replayed: created.replayed
+          replayed: created.replayed,
+          recovered: created.recovered,
+          status: created.caseRecord.status
         });
 
-        return sendJson(response, created.replayed ? 200 : 201, created);
+        const status =
+          created.replayed || created.recovered
+            ? 200
+            : created.caseRecord.status === "ingestion_failed"
+              ? 202
+              : 201;
+        return sendJson(response, status, created);
       }
 
       const caseMatch = url.pathname.match(/^\/cases\/([^/]+)$/);
@@ -112,7 +121,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const databaseUrl =
     process.env.CHAINOPS_DATABASE_URL ?? "postgres://chainops:chainops@127.0.0.1:5432/chainops";
   const schema = process.env.CHAINOPS_SCHEMA ?? "public";
-  const store = new PostgresAuditStore(databaseUrl, schema);
+  const provider = createDefaultTransactionProviderFromEnv();
+  const store = new PostgresAuditStore({ databaseUrl, schema, provider });
   const app = createApp(store);
 
   await store.init();

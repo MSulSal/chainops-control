@@ -17,7 +17,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 
 - Slice 1: implemented local TypeScript service with wallet case intake, validation, deterministic transaction fixture, risk result, immutable audit-event log, human approval state, health/readiness endpoints, structured logs, trace IDs, Docker Compose definition, and Node test coverage.
 - Slice 2: implemented PostgreSQL persistence in Docker Compose, schema bootstrapping, CI-backed database tests, and duplicate-intake replay through `Idempotency-Key`.
-- Slice 3: Ethereum JSON-RPC/Etherscan adapter, validation, idempotent ingestion, retry tests.
+- Slice 3: implemented an Etherscan-compatible read-only ingestion seam, deterministic local fallback, source-metadata persistence, provider-failure audit events, and idempotent recovery tests.
 - Slice 4: deterministic analytics and SQL-backed case timeline.
 - Slice 5: reviewer notes, evidence summaries, and approval/rejection workflow history.
 - Slice 6: OpenTelemetry traces/metrics, a minimal Terraform sandbox, and an operational runbook.

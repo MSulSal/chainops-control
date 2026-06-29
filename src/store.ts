@@ -5,8 +5,16 @@ import {
   buildAuditEvent,
   type CaseRecord,
   createCaseRecord,
+  createFailedCaseRecord,
+  normalizeWalletAddress,
+  type SourceMetadata,
   type TransactionSample
 } from "./domain.ts";
+import {
+  FixtureTransactionProvider,
+  ProviderFetchError,
+  type TransactionProvider
+} from "./provider.ts";
 
 type CaseRow = {
   id: string;
@@ -20,6 +28,7 @@ type CaseRow = {
   reviewed_at: string | null;
   reviewer_note: string | null;
   idempotency_key: string | null;
+  source_metadata: SourceMetadata | null;
 };
 
 type TransactionRow = {
@@ -40,6 +49,11 @@ type AuditEventRow = {
   details: Record<string, unknown>;
 };
 
+type StoredCaseBundle = {
+  caseRecord: CaseRecord;
+  auditEvents: AuditEvent[];
+};
+
 export type AuditStore = {
   init(): Promise<void>;
   close(): Promise<void>;
@@ -49,7 +63,7 @@ export type AuditStore = {
     traceId: string;
     now: string;
     idempotencyKey?: string;
-  }): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean }>;
+  }): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean; recovered: boolean }>;
   approveCase(input: {
     caseId: string;
     decision: ApprovalDecision;
@@ -64,12 +78,20 @@ export class PostgresAuditStore implements AuditStore {
   private readonly pool: Pool;
   private readonly schema: string;
   private readonly initPromise: Promise<void>;
+  private readonly provider: TransactionProvider;
 
-  constructor(databaseUrlOrOptions: string | { databaseUrl?: string; pool?: Pool; schema?: string }, schema = "public") {
+  constructor(
+    databaseUrlOrOptions:
+      | string
+      | { databaseUrl?: string; pool?: Pool; schema?: string; provider?: TransactionProvider },
+    schema = "public"
+  ) {
     const databaseUrl =
       typeof databaseUrlOrOptions === "string" ? databaseUrlOrOptions : databaseUrlOrOptions.databaseUrl;
     const providedPool = typeof databaseUrlOrOptions === "string" ? undefined : databaseUrlOrOptions.pool;
     const resolvedSchema = typeof databaseUrlOrOptions === "string" ? schema : databaseUrlOrOptions.schema ?? "public";
+    const provider =
+      typeof databaseUrlOrOptions === "string" ? undefined : databaseUrlOrOptions.provider;
 
     if (!databaseUrl && !providedPool) {
       throw new Error("databaseUrl or pool is required");
@@ -81,6 +103,7 @@ export class PostgresAuditStore implements AuditStore {
 
     this.pool = providedPool ?? new Pool({ connectionString: databaseUrl });
     this.schema = resolvedSchema;
+    this.provider = provider ?? new FixtureTransactionProvider();
     this.initPromise = this.initialize();
   }
 
@@ -119,128 +142,54 @@ export class PostgresAuditStore implements AuditStore {
     traceId: string;
     now: string;
     idempotencyKey?: string;
-  }): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean }> {
+  }): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean; recovered: boolean }> {
     await this.initPromise;
-    const created = createCaseRecord(input);
-    const client = await this.pool.connect();
+    const walletAddress = normalizeWalletAddress(input.walletAddress);
+    const existing = input.idempotencyKey
+      ? await this.findCaseByIdempotencyKey(input.idempotencyKey)
+      : null;
+
+    if (existing && existing.caseRecord.status !== "ingestion_failed") {
+      return { ...existing, replayed: true, recovered: false };
+    }
 
     try {
-      await client.query("BEGIN");
+      const providerResult = await this.provider.fetchTransactionSample({
+        walletAddress,
+        traceId: input.traceId
+      });
+      const created = createCaseRecord({
+        caseId: existing?.caseRecord.id,
+        createdAt: existing?.caseRecord.createdAt,
+        walletAddress,
+        transactions: providerResult.transactions,
+        sourceMetadata: providerResult.sourceMetadata,
+        traceId: input.traceId,
+        now: input.now
+      });
 
-      if (input.idempotencyKey) {
-        const existingResult = await client.query<{ id: string }>(
-          `SELECT id FROM ${this.schema}.cases WHERE idempotency_key = $1`,
-          [input.idempotencyKey]
-        );
-
-        if (existingResult.rowCount) {
-          const existing = await this.findCaseWithClient(client, existingResult.rows[0].id);
-          await client.query("COMMIT");
-
-          if (!existing) {
-            throw new Error("idempotent case lookup failed");
-          }
-
-          return { ...existing, replayed: true };
-        }
+      if (existing) {
+        return await this.recoverFailedCase(created);
       }
 
-      await client.query(
-        `INSERT INTO ${this.schema}.cases (
-          id,
-          wallet_address,
-          status,
-          risk_level,
-          risk_score,
-          risk_indicators,
-          trace_id,
-          created_at,
-          reviewed_at,
-          reviewer_note,
-          idempotency_key
-        ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8::timestamptz, $9::timestamptz, $10, $11)`,
-        [
-          created.caseRecord.id,
-          created.caseRecord.walletAddress,
-          created.caseRecord.status,
-          created.caseRecord.risk.level,
-          created.caseRecord.risk.score,
-          JSON.stringify(created.caseRecord.risk.indicators),
-          created.caseRecord.traceId,
-          created.caseRecord.createdAt,
-          created.caseRecord.reviewedAt ?? null,
-          created.caseRecord.reviewerNote ?? null,
-          input.idempotencyKey ?? null
-        ]
-      );
-
-      for (const [index, transaction] of created.caseRecord.transactions.entries()) {
-        await client.query(
-          `INSERT INTO ${this.schema}.transactions (
-            case_id,
-            tx_hash,
-            direction,
-            amount_eth,
-            confirmations,
-            counterparty,
-            position
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [
-            created.caseRecord.id,
-            transaction.hash,
-            transaction.direction,
-            transaction.amountEth.toFixed(2),
-            transaction.confirmations,
-            transaction.counterparty,
-            index
-          ]
-        );
-      }
-
-      for (const auditEvent of created.auditEvents) {
-        await client.query(
-          `INSERT INTO ${this.schema}.audit_events (
-            id,
-            case_id,
-            event_type,
-            trace_id,
-            at,
-            details
-          ) VALUES ($1, $2, $3, $4, $5::timestamptz, $6::jsonb)`,
-          [
-            auditEvent.id,
-            auditEvent.caseId,
-            auditEvent.type,
-            auditEvent.traceId,
-            auditEvent.at,
-            JSON.stringify(auditEvent.details)
-          ]
-        );
-      }
-
-      await client.query("COMMIT");
-      return { ...created, replayed: false };
+      return await this.insertCase(created, input.idempotencyKey);
     } catch (error) {
-      await client.query("ROLLBACK");
+      const providerError = normalizeProviderFetchError(error);
+      const sourceMetadata = buildFailureSourceMetadata(providerError, input.now);
+      const failed = createFailedCaseRecord({
+        caseId: existing?.caseRecord.id,
+        createdAt: existing?.caseRecord.createdAt,
+        walletAddress,
+        sourceMetadata,
+        traceId: input.traceId,
+        now: input.now
+      });
 
-      if ((error as { code?: string }).code === "23505" && input.idempotencyKey) {
-        const existingResult = await client.query<{ id: string }>(
-          `SELECT id FROM ${this.schema}.cases WHERE idempotency_key = $1`,
-          [input.idempotencyKey]
-        );
-
-        const existing = existingResult.rowCount
-          ? await this.findCaseWithClient(client, existingResult.rows[0].id)
-          : null;
-
-        if (existing) {
-          return { ...existing, replayed: true };
-        }
+      if (existing) {
+        return await this.recordFailedRetry(failed);
       }
 
-      throw error;
-    } finally {
-      client.release();
+      return await this.insertCase(failed, input.idempotencyKey);
     }
   }
 
@@ -286,25 +235,7 @@ export class PostgresAuditStore implements AuditStore {
         { note: input.note ?? null }
       );
 
-      await client.query(
-        `INSERT INTO ${this.schema}.audit_events (
-          id,
-          case_id,
-          event_type,
-          trace_id,
-          at,
-          details
-        ) VALUES ($1, $2, $3, $4, $5::timestamptz, $6::jsonb)`,
-        [
-          auditEvent.id,
-          auditEvent.caseId,
-          auditEvent.type,
-          auditEvent.traceId,
-          auditEvent.at,
-          JSON.stringify(auditEvent.details)
-        ]
-      );
-
+      await this.insertAuditEvents(client, [auditEvent]);
       const found = await this.findCaseWithClient(client, input.caseId);
       await client.query("COMMIT");
 
@@ -341,7 +272,7 @@ export class PostgresAuditStore implements AuditStore {
         CREATE TABLE IF NOT EXISTS ${this.schema}.cases (
           id UUID PRIMARY KEY,
           wallet_address TEXT NOT NULL,
-          status TEXT NOT NULL CHECK (status IN ('pending_review', 'approved', 'rejected')),
+          status TEXT NOT NULL CHECK (status IN ('pending_review', 'approved', 'rejected', 'ingestion_failed')),
           risk_level TEXT NOT NULL CHECK (risk_level IN ('low', 'medium', 'high')),
           risk_score INTEGER NOT NULL,
           risk_indicators JSONB NOT NULL,
@@ -349,8 +280,16 @@ export class PostgresAuditStore implements AuditStore {
           created_at TIMESTAMPTZ NOT NULL,
           reviewed_at TIMESTAMPTZ,
           reviewer_note TEXT,
-          idempotency_key TEXT UNIQUE
+          idempotency_key TEXT UNIQUE,
+          source_metadata JSONB
         )
+      `);
+      await client.query(`ALTER TABLE ${this.schema}.cases ADD COLUMN IF NOT EXISTS source_metadata JSONB`);
+      await client.query(`ALTER TABLE ${this.schema}.cases DROP CONSTRAINT IF EXISTS cases_status_check`);
+      await client.query(`
+        ALTER TABLE ${this.schema}.cases
+        ADD CONSTRAINT cases_status_check
+        CHECK (status IN ('pending_review', 'approved', 'rejected', 'ingestion_failed'))
       `);
       await client.query(`
         CREATE TABLE IF NOT EXISTS ${this.schema}.transactions (
@@ -418,6 +357,220 @@ export class PostgresAuditStore implements AuditStore {
       auditEvents: auditEventResult.rows.map(mapAuditEventRow)
     };
   }
+
+  private async findCaseByIdempotencyKey(idempotencyKey: string): Promise<StoredCaseBundle | null> {
+    const client = await this.pool.connect();
+
+    try {
+      const existingResult = await client.query<{ id: string }>(
+        `SELECT id FROM ${this.schema}.cases WHERE idempotency_key = $1`,
+        [idempotencyKey]
+      );
+
+      if (!existingResult.rowCount) {
+        return null;
+      }
+
+      return await this.findCaseWithClient(client, existingResult.rows[0].id);
+    } finally {
+      client.release();
+    }
+  }
+
+  private async insertCase(
+    created: StoredCaseBundle,
+    idempotencyKey?: string
+  ): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean; recovered: boolean }> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+      await this.insertCaseRow(client, created.caseRecord, idempotencyKey);
+      await this.replaceTransactions(client, created.caseRecord.id, created.caseRecord.transactions);
+      await this.insertAuditEvents(client, created.auditEvents);
+      await client.query("COMMIT");
+      return { ...created, replayed: false, recovered: false };
+    } catch (error) {
+      await client.query("ROLLBACK");
+
+      if ((error as { code?: string }).code === "23505" && idempotencyKey) {
+        const existing = await this.findCaseByIdempotencyKey(idempotencyKey);
+        if (existing) {
+          return { ...existing, replayed: true, recovered: false };
+        }
+      }
+
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async recoverFailedCase(
+    created: StoredCaseBundle
+  ): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean; recovered: boolean }> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+      await this.updateCaseRow(client, created.caseRecord);
+      await this.replaceTransactions(client, created.caseRecord.id, created.caseRecord.transactions);
+      await this.insertAuditEvents(client, created.auditEvents.slice(2));
+      const found = await this.findCaseWithClient(client, created.caseRecord.id);
+      await client.query("COMMIT");
+
+      if (!found) {
+        throw new Error("case not found");
+      }
+
+      return { ...found, replayed: false, recovered: true };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async recordFailedRetry(
+    created: StoredCaseBundle
+  ): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean; recovered: boolean }> {
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+      await this.updateCaseRow(client, created.caseRecord);
+      await this.insertAuditEvents(client, created.auditEvents.slice(2));
+      const found = await this.findCaseWithClient(client, created.caseRecord.id);
+      await client.query("COMMIT");
+
+      if (!found) {
+        throw new Error("case not found");
+      }
+
+      return { ...found, replayed: false, recovered: false };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async insertCaseRow(client: PoolClient, caseRecord: CaseRecord, idempotencyKey?: string): Promise<void> {
+    await client.query(
+      `INSERT INTO ${this.schema}.cases (
+        id,
+        wallet_address,
+        status,
+        risk_level,
+        risk_score,
+        risk_indicators,
+        trace_id,
+        created_at,
+        reviewed_at,
+        reviewer_note,
+        idempotency_key,
+        source_metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8::timestamptz, $9::timestamptz, $10, $11, $12::jsonb)`,
+      [
+        caseRecord.id,
+        caseRecord.walletAddress,
+        caseRecord.status,
+        caseRecord.risk.level,
+        caseRecord.risk.score,
+        JSON.stringify(caseRecord.risk.indicators),
+        caseRecord.traceId,
+        caseRecord.createdAt,
+        caseRecord.reviewedAt ?? null,
+        caseRecord.reviewerNote ?? null,
+        idempotencyKey ?? null,
+        JSON.stringify(caseRecord.sourceMetadata ?? null)
+      ]
+    );
+  }
+
+  private async updateCaseRow(client: PoolClient, caseRecord: CaseRecord): Promise<void> {
+    await client.query(
+      `UPDATE ${this.schema}.cases
+       SET wallet_address = $2,
+           status = $3,
+           risk_level = $4,
+           risk_score = $5,
+           risk_indicators = $6::jsonb,
+           trace_id = $7,
+           reviewed_at = $8::timestamptz,
+           reviewer_note = $9,
+           source_metadata = $10::jsonb
+       WHERE id = $1`,
+      [
+        caseRecord.id,
+        caseRecord.walletAddress,
+        caseRecord.status,
+        caseRecord.risk.level,
+        caseRecord.risk.score,
+        JSON.stringify(caseRecord.risk.indicators),
+        caseRecord.traceId,
+        caseRecord.reviewedAt ?? null,
+        caseRecord.reviewerNote ?? null,
+        JSON.stringify(caseRecord.sourceMetadata ?? null)
+      ]
+    );
+  }
+
+  private async replaceTransactions(
+    client: PoolClient,
+    caseId: string,
+    transactions: TransactionSample[]
+  ): Promise<void> {
+    await client.query(`DELETE FROM ${this.schema}.transactions WHERE case_id = $1`, [caseId]);
+
+    for (const [index, transaction] of transactions.entries()) {
+      await client.query(
+        `INSERT INTO ${this.schema}.transactions (
+          case_id,
+          tx_hash,
+          direction,
+          amount_eth,
+          confirmations,
+          counterparty,
+          position
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          caseId,
+          transaction.hash,
+          transaction.direction,
+          transaction.amountEth.toFixed(2),
+          transaction.confirmations,
+          transaction.counterparty,
+          index
+        ]
+      );
+    }
+  }
+
+  private async insertAuditEvents(client: PoolClient, auditEvents: AuditEvent[]): Promise<void> {
+    for (const auditEvent of auditEvents) {
+      await client.query(
+        `INSERT INTO ${this.schema}.audit_events (
+          id,
+          case_id,
+          event_type,
+          trace_id,
+          at,
+          details
+        ) VALUES ($1, $2, $3, $4, $5::timestamptz, $6::jsonb)`,
+        [
+          auditEvent.id,
+          auditEvent.caseId,
+          auditEvent.type,
+          auditEvent.traceId,
+          auditEvent.at,
+          JSON.stringify(auditEvent.details)
+        ]
+      );
+    }
+  }
 }
 
 function mapCaseRow(caseRow: CaseRow, transactionRows: TransactionRow[]): CaseRecord {
@@ -437,6 +590,7 @@ function mapCaseRow(caseRow: CaseRow, transactionRows: TransactionRow[]): CaseRe
       confirmations: row.confirmations,
       counterparty: row.counterparty
     })),
+    sourceMetadata: caseRow.source_metadata ?? undefined,
     traceId: caseRow.trace_id,
     createdAt: new Date(caseRow.created_at).toISOString(),
     reviewedAt: caseRow.reviewed_at ? new Date(caseRow.reviewed_at).toISOString() : undefined,
@@ -452,5 +606,31 @@ function mapAuditEventRow(row: AuditEventRow): AuditEvent {
     traceId: row.trace_id,
     at: new Date(row.at).toISOString(),
     details: row.details
+  };
+}
+
+function normalizeProviderFetchError(error: unknown): ProviderFetchError {
+  if (error instanceof ProviderFetchError) {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return new ProviderFetchError(error.message, { code: "http_error" });
+  }
+
+  return new ProviderFetchError("provider request failed", { code: "http_error" });
+}
+
+function buildFailureSourceMetadata(error: ProviderFetchError, fetchedAt: string): SourceMetadata {
+  return {
+    provider: error.provider,
+    mode: "live",
+    network: "ethereum-mainnet",
+    fetchedAt,
+    attemptCount: 1,
+    timeoutMs: error.timeoutMs,
+    transactionCount: 0,
+    errorCode: error.code,
+    retriable: error.retriable
   };
 }

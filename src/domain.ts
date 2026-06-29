@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-export type CaseStatus = "pending_review" | "approved" | "rejected";
+export type CaseStatus = "pending_review" | "approved" | "rejected" | "ingestion_failed";
 export type RiskLevel = "low" | "medium" | "high";
 export type ApprovalDecision = "approve" | "reject";
 
@@ -18,12 +18,25 @@ export type RiskResult = {
   indicators: string[];
 };
 
+export type SourceMetadata = {
+  provider: string;
+  mode: "fixture" | "live";
+  network: "ethereum-mainnet";
+  fetchedAt: string;
+  attemptCount: number;
+  timeoutMs: number;
+  transactionCount: number;
+  errorCode?: string;
+  retriable?: boolean;
+};
+
 export type CaseRecord = {
   id: string;
   walletAddress: string;
   status: CaseStatus;
   risk: RiskResult;
   transactions: TransactionSample[];
+  sourceMetadata?: SourceMetadata;
   traceId: string;
   createdAt: string;
   reviewedAt?: string;
@@ -37,6 +50,7 @@ export type AuditEvent = {
     | "CASE_RECEIVED"
     | "WALLET_VALIDATED"
     | "TRANSACTIONS_INGESTED"
+    | "PROVIDER_FETCH_FAILED"
     | "RISK_EVALUATED"
     | "HUMAN_REVIEW_PENDING"
     | "HUMAN_APPROVED"
@@ -114,14 +128,18 @@ export function evaluateRisk(walletAddress: string, transactions: TransactionSam
 }
 
 export function createCaseRecord(input: {
+  caseId?: string;
+  createdAt?: string;
   walletAddress: string;
+  transactions: TransactionSample[];
+  sourceMetadata: SourceMetadata;
   traceId: string;
   now: string;
 }): { caseRecord: CaseRecord; auditEvents: AuditEvent[] } {
   const walletAddress = normalizeWalletAddress(input.walletAddress);
-  const transactions = buildTransactionSample(walletAddress);
+  const transactions = input.transactions;
   const risk = evaluateRisk(walletAddress, transactions);
-  const caseId = randomUUID();
+  const caseId = input.caseId ?? randomUUID();
 
   const caseRecord: CaseRecord = {
     id: caseId,
@@ -129,15 +147,19 @@ export function createCaseRecord(input: {
     status: "pending_review",
     risk,
     transactions,
+    sourceMetadata: input.sourceMetadata,
     traceId: input.traceId,
-    createdAt: input.now
+    createdAt: input.createdAt ?? input.now
   };
 
   const auditEvents = [
     buildAuditEvent(caseId, "CASE_RECEIVED", input.traceId, input.now, { source: "api" }),
     buildAuditEvent(caseId, "WALLET_VALIDATED", input.traceId, input.now, { walletAddress }),
     buildAuditEvent(caseId, "TRANSACTIONS_INGESTED", input.traceId, input.now, {
-      source: "deterministic-fixture",
+      source: input.sourceMetadata.provider,
+      mode: input.sourceMetadata.mode,
+      attemptCount: input.sourceMetadata.attemptCount,
+      timeoutMs: input.sourceMetadata.timeoutMs,
       count: transactions.length
     }),
     buildAuditEvent(caseId, "RISK_EVALUATED", input.traceId, input.now, {
@@ -147,6 +169,48 @@ export function createCaseRecord(input: {
     }),
     buildAuditEvent(caseId, "HUMAN_REVIEW_PENDING", input.traceId, input.now, {
       requiredBeforeAction: true
+    })
+  ];
+
+  return { caseRecord, auditEvents };
+}
+
+export function createFailedCaseRecord(input: {
+  caseId?: string;
+  createdAt?: string;
+  walletAddress: string;
+  sourceMetadata: SourceMetadata;
+  traceId: string;
+  now: string;
+}): { caseRecord: CaseRecord; auditEvents: AuditEvent[] } {
+  const walletAddress = normalizeWalletAddress(input.walletAddress);
+  const caseId = input.caseId ?? randomUUID();
+
+  const caseRecord: CaseRecord = {
+    id: caseId,
+    walletAddress,
+    status: "ingestion_failed",
+    risk: {
+      level: "low",
+      score: 0,
+      indicators: ["transaction sample unavailable until provider retry succeeds"]
+    },
+    transactions: [],
+    sourceMetadata: input.sourceMetadata,
+    traceId: input.traceId,
+    createdAt: input.createdAt ?? input.now
+  };
+
+  const auditEvents = [
+    buildAuditEvent(caseId, "CASE_RECEIVED", input.traceId, input.now, { source: "api" }),
+    buildAuditEvent(caseId, "WALLET_VALIDATED", input.traceId, input.now, { walletAddress }),
+    buildAuditEvent(caseId, "PROVIDER_FETCH_FAILED", input.traceId, input.now, {
+      provider: input.sourceMetadata.provider,
+      mode: input.sourceMetadata.mode,
+      attemptCount: input.sourceMetadata.attemptCount,
+      timeoutMs: input.sourceMetadata.timeoutMs,
+      errorCode: input.sourceMetadata.errorCode ?? "unknown",
+      retriable: input.sourceMetadata.retriable ?? true
     })
   ];
 
