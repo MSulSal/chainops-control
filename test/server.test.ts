@@ -382,6 +382,10 @@ test("lists recent cases with failed-ingestion visibility, queue summaries, and 
   assert.equal(body.summary.pendingReviewCount, 1);
   assert.equal(body.summary.failedIngestionCount, 1);
   assert.equal(body.summary.highRiskCount, 1);
+  assert.equal(body.analytics.statusTransitions.enteredReviewCount, 1);
+  assert.equal(body.analytics.statusTransitions.failedIngestionCount, 1);
+  assert.equal(body.analytics.reviewLatency.reviewedCount, 0);
+  assert.equal(Array.isArray(body.analytics.timeline), true);
   assert.equal(body.cases[0].walletAddress, "0x9999999999999999999999999999999999999999");
   assert.equal(body.cases[1].status, "ingestion_failed");
   assert.equal(body.cases[1].sourceMetadata.errorCode, "timeout");
@@ -393,8 +397,51 @@ test("lists recent cases with failed-ingestion visibility, queue summaries, and 
   assert.equal(filteredBody.cases.length, 1);
   assert.equal(filteredBody.summary.total, 1);
   assert.equal(filteredBody.summary.pendingReviewCount, 1);
+  assert.equal(filteredBody.analytics.statusTransitions.enteredReviewCount, 1);
   assert.equal(filteredBody.filters.status, "pending_review");
   assert.equal(filteredBody.filters.search, "9999");
+});
+
+test("returns review latency and timeline analytics after reviewer decisions are recorded", async (t) => {
+  const store = await createTestStore();
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const createResponse = await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-request-id": "trace-latency-1"
+    },
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+  const created = await createResponse.json();
+
+  const reviewResponse = await fetch(`${baseUrl}/cases/${created.caseRecord.id}/approval`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ decision: "approve", note: "latency test approval" })
+  });
+  assert.equal(reviewResponse.status, 200);
+
+  const listResponse = await fetch(`${baseUrl}/cases`);
+  assert.equal(listResponse.status, 200);
+  const listed = await listResponse.json();
+
+  assert.equal(listed.analytics.statusTransitions.approvedCount, 1);
+  assert.equal(listed.analytics.reviewLatency.reviewedCount, 1);
+  assert.equal(listed.analytics.reviewLatency.averageHours >= 0, true);
+  assert.equal(listed.analytics.timeline.length >= 1, true);
+  assert.equal(listed.analytics.timeline.at(-1).approvedCount >= 1, true);
 });
 
 async function createTestStore(provider?: TransactionProvider): Promise<PostgresAuditStore> {

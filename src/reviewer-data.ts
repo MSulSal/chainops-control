@@ -1,5 +1,6 @@
 import type {
   AuditEvent,
+  CaseQueueAnalytics,
   CaseListFilters,
   CaseQueueSummary,
   CaseRecord,
@@ -16,6 +17,7 @@ export type CaseDetailResponse = {
 export type CaseListResponse = {
   cases: CaseSummary[];
   summary: CaseQueueSummary;
+  analytics: CaseQueueAnalytics;
   filters: CaseListFilters;
 };
 

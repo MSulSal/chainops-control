@@ -116,7 +116,9 @@ a {
 .facts-grid,
 .audit-grid,
 .transaction-grid,
-.summary-grid {
+.summary-grid,
+.analytics-grid,
+.timeline-grid {
   display: grid;
   gap: 16px;
 }
@@ -128,6 +130,14 @@ a {
 .summary-grid {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   margin-bottom: 24px;
+}
+
+.analytics-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.timeline-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .detail-grid {
@@ -149,6 +159,19 @@ a {
   border-color: rgba(15, 118, 110, 0.35);
 }
 
+.metric-card,
+.timeline-card {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+  background: var(--panel-strong);
+}
+
+.metric-card h3 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+}
+
 .case-card h2 {
   font-size: 1.15rem;
 }
@@ -158,6 +181,38 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.timeline-bar-group {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(91, 100, 114, 0.12);
+  overflow: hidden;
+}
+
+.timeline-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.timeline-fill-created {
+  background: linear-gradient(90deg, var(--accent), #14b8a6);
+}
+
+.timeline-fill-reviewed {
+  background: linear-gradient(90deg, var(--success), #22c55e);
 }
 
 .chip {

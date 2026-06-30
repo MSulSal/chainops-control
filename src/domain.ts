@@ -66,6 +66,35 @@ export type CaseQueueSummary = {
   lowRiskCount: number;
 };
 
+export type CaseStatusTransitionCounts = {
+  enteredReviewCount: number;
+  approvedCount: number;
+  rejectedCount: number;
+  failedIngestionCount: number;
+};
+
+export type ReviewLatencySummary = {
+  reviewedCount: number;
+  averageHours: number | null;
+  maxHours: number | null;
+  oldestPendingHours: number | null;
+};
+
+export type CaseTimelinePoint = {
+  day: string;
+  createdCount: number;
+  reviewedCount: number;
+  approvedCount: number;
+  rejectedCount: number;
+  failedIngestionCount: number;
+};
+
+export type CaseQueueAnalytics = {
+  statusTransitions: CaseStatusTransitionCounts;
+  reviewLatency: ReviewLatencySummary;
+  timeline: CaseTimelinePoint[];
+};
+
 export type AuditEvent = {
   id: string;
   caseId: string;

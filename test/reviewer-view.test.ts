@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   getActiveFilterChips,
+  getQueueAnalyticsCards,
   getCaseDetailCallout,
   getCaseListSubtitle,
   getProviderSummary,
+  getReviewLatencyCards,
+  getTimelineBars,
   getQueueSummaryCards,
   getStatusCopy
 } from "../src/reviewer-view.ts";
@@ -114,4 +117,48 @@ test("builds summary cards and active filter chips for the reviewer workspace", 
   assert.equal(cards[0].label, "Visible queue");
   assert.equal(cards[1].value, "4");
   assert.deepEqual(chips, ["status:pending_review", "risk:high", "query:trace-123"]);
+});
+
+test("builds analytics cards and timeline bars for persisted reviewer metrics", () => {
+  const analytics = {
+    statusTransitions: {
+      enteredReviewCount: 5,
+      approvedCount: 2,
+      rejectedCount: 1,
+      failedIngestionCount: 1
+    },
+    reviewLatency: {
+      reviewedCount: 3,
+      averageHours: 2.5,
+      maxHours: 5.25,
+      oldestPendingHours: 27.4
+    },
+    timeline: [
+      {
+        day: "2026-06-29",
+        createdCount: 2,
+        reviewedCount: 1,
+        approvedCount: 1,
+        rejectedCount: 0,
+        failedIngestionCount: 1
+      },
+      {
+        day: "2026-06-30",
+        createdCount: 4,
+        reviewedCount: 3,
+        approvedCount: 2,
+        rejectedCount: 1,
+        failedIngestionCount: 0
+      }
+    ]
+  };
+  const analyticsCards = getQueueAnalyticsCards(analytics);
+  const latencyCards = getReviewLatencyCards(analytics);
+  const timelineBars = getTimelineBars(analytics.timeline);
+
+  assert.equal(analyticsCards[0].value, "5");
+  assert.equal(latencyCards[1].value, "2.5");
+  assert.equal(latencyCards[3].tone, "danger");
+  assert.equal(timelineBars[0].dayLabel, "Jun 29");
+  assert.equal(timelineBars[1].reviewedCount, 3);
 });

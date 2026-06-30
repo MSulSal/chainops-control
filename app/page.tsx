@@ -4,8 +4,11 @@ import { fetchCaseSummaries, type ReviewerWorkspaceFilters } from "../src/review
 import {
   formatTimestamp,
   getActiveFilterChips,
+  getQueueAnalyticsCards,
   getCaseListSubtitle,
   getProviderSummary,
+  getReviewLatencyCards,
+  getTimelineBars,
   getQueueSummaryCards,
   getStatusCopy
 } from "../src/reviewer-view.ts";
@@ -21,9 +24,12 @@ export default async function ReviewerWorkspacePage({
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const initialFilters = readWorkspaceFilters(resolvedSearchParams);
-  const { cases, summary, filters } = await fetchCaseSummaries(initialFilters);
+  const { cases, summary, analytics, filters } = await fetchCaseSummaries(initialFilters);
   const activeFilterChips = getActiveFilterChips(filters);
   const summaryCards = getQueueSummaryCards(summary);
+  const analyticsCards = getQueueAnalyticsCards(analytics);
+  const latencyCards = getReviewLatencyCards(analytics);
+  const timelineBars = getTimelineBars(analytics.timeline);
 
   return (
     <main className="shell">
@@ -70,6 +76,98 @@ export default async function ReviewerWorkspacePage({
             <span className={`chip chip-${card.tone}`}>{card.label}</span>
           </article>
         ))}
+      </section>
+
+      <section className="detail-grid" style={{ marginBottom: 24 }}>
+        <article className="panel">
+          <div className="panel-stack">
+            <div>
+              <p className="eyebrow">Workflow analytics</p>
+              <h2>Persisted review transitions</h2>
+              <p className="muted">
+                These counts come from SQL-backed case and audit state, not browser-only transforms.
+              </p>
+            </div>
+            <div className="analytics-grid">
+              {analyticsCards.map((card) => (
+                <article key={card.label} className="metric-card">
+                  <div className="chip-row">
+                    <span className={`chip chip-${card.tone}`}>{card.label}</span>
+                  </div>
+                  <h3>{card.value}</h3>
+                  <p className="muted">{card.description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </article>
+
+        <article className="panel">
+          <div className="panel-stack">
+            <div>
+              <p className="eyebrow">Review latency</p>
+              <h2>Queue pressure at a glance</h2>
+              <p className="muted">
+                Review timing stays visible so the workspace can prove operational history, not only case state.
+              </p>
+            </div>
+            <div className="analytics-grid">
+              {latencyCards.map((card) => (
+                <article key={card.label} className="metric-card">
+                  <div className="chip-row">
+                    <span className={`chip chip-${card.tone}`}>{card.label}</span>
+                  </div>
+                  <h3>{card.value}</h3>
+                  <p className="muted">{card.description}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel-stack">
+          <div>
+            <p className="eyebrow">Case timeline</p>
+            <h2>Recent intake and review flow</h2>
+            <p className="muted">
+              Daily intake, review completion, approval, rejection, and failed-ingestion counts stay derived from persisted SQL state.
+            </p>
+          </div>
+          {timelineBars.length ? (
+            <div className="timeline-grid">
+              {timelineBars.map((point) => (
+                <article key={point.dayLabel} className="timeline-card">
+                  <div className="timeline-header">
+                    <strong>{point.dayLabel}</strong>
+                    <span className="muted">
+                      {point.createdCount} intake / {point.reviewedCount} reviewed
+                    </span>
+                  </div>
+                  <div className="timeline-bar-group">
+                    <div className="timeline-track">
+                      <div className="timeline-fill timeline-fill-created" style={{ width: point.createdWidth }} />
+                    </div>
+                    <div className="timeline-track">
+                      <div className="timeline-fill timeline-fill-reviewed" style={{ width: point.reviewedWidth }} />
+                    </div>
+                  </div>
+                  <div className="chip-row">
+                    <span className="chip chip-neutral">{point.createdCount} created</span>
+                    <span className="chip chip-success">{point.approvedCount} approved</span>
+                    <span className="chip chip-danger">{point.rejectedCount} rejected</span>
+                    <span className="chip chip-warning">{point.failedIngestionCount} failed</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="callout callout-info">
+              Timeline metrics appear after at least one case is stored in the current filtered queue.
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="panel">

@@ -3,13 +3,17 @@ import {
   type ApprovalDecision,
   type AuditEvent,
   buildAuditEvent,
+  type CaseQueueAnalytics,
   type CaseListFilters,
   type CaseRecord,
   type CaseQueueSummary,
+  type CaseStatusTransitionCounts,
+  type CaseTimelinePoint,
   type CaseSummary,
   createCaseRecord,
   createFailedCaseRecord,
   normalizeWalletAddress,
+  type ReviewLatencySummary,
   type SourceMetadata,
   type TransactionSample
 } from "./domain.ts";
@@ -68,6 +72,26 @@ type CaseSummaryCountRow = {
   low_risk_count: string;
 };
 
+type TransitionCountRow = {
+  entered_review_count: string;
+  approved_count: string;
+  rejected_count: string;
+  failed_ingestion_count: string;
+};
+
+type ReviewLatencyRow = {
+  reviewed_count: string;
+  average_hours: string | null;
+  max_hours: string | null;
+  oldest_pending_hours: string | null;
+};
+
+type TimelineCaseRow = {
+  created_at: string;
+  reviewed_at: string | null;
+  status: CaseRecord["status"];
+};
+
 export type AuditStore = {
   init(): Promise<void>;
   close(): Promise<void>;
@@ -75,6 +99,7 @@ export type AuditStore = {
   listCases(filters?: Partial<CaseListFilters>): Promise<{
     cases: CaseSummary[];
     summary: CaseQueueSummary;
+    analytics: CaseQueueAnalytics;
     filters: CaseListFilters;
   }>;
   createCase(input: {
@@ -159,6 +184,7 @@ export class PostgresAuditStore implements AuditStore {
   async listCases(filters: Partial<CaseListFilters> = {}): Promise<{
     cases: CaseSummary[];
     summary: CaseQueueSummary;
+    analytics: CaseQueueAnalytics;
     filters: CaseListFilters;
   }> {
     await this.initPromise;
@@ -192,6 +218,7 @@ export class PostgresAuditStore implements AuditStore {
       return {
         cases: caseResult.rows.map(mapCaseSummaryRow),
         summary: mapCaseSummaryCountRow(countResult.rows[0]),
+        analytics: await this.loadCaseQueueAnalytics(client, normalizedFilters),
         filters: normalizedFilters
       };
     } finally {
@@ -437,6 +464,58 @@ export class PostgresAuditStore implements AuditStore {
     } finally {
       client.release();
     }
+  }
+
+  private async loadCaseQueueAnalytics(
+    client: PoolClient,
+    filters: CaseListFilters
+  ): Promise<CaseQueueAnalytics> {
+    const where = buildCaseListWhereClause(filters);
+    const transitionResult = await client.query<TransitionCountRow>(
+      `WITH filtered_cases AS (
+         SELECT id
+         FROM ${this.schema}.cases
+         ${where.sql}
+       )
+       SELECT COALESCE(SUM(CASE WHEN event_type = 'HUMAN_REVIEW_PENDING' THEN 1 ELSE 0 END), 0) AS entered_review_count,
+              COALESCE(SUM(CASE WHEN event_type = 'HUMAN_APPROVED' THEN 1 ELSE 0 END), 0) AS approved_count,
+              COALESCE(SUM(CASE WHEN event_type = 'HUMAN_REJECTED' THEN 1 ELSE 0 END), 0) AS rejected_count,
+              COALESCE(SUM(CASE WHEN event_type = 'PROVIDER_FETCH_FAILED' THEN 1 ELSE 0 END), 0) AS failed_ingestion_count
+       FROM ${this.schema}.audit_events
+       WHERE case_id IN (SELECT id FROM filtered_cases)`,
+      where.values
+    );
+    const latencyResult = await client.query<ReviewLatencyRow>(
+      `WITH filtered_cases AS (
+         SELECT created_at, reviewed_at, status
+         FROM ${this.schema}.cases
+         ${where.sql}
+       )
+       SELECT COALESCE(SUM(CASE WHEN reviewed_at IS NOT NULL THEN 1 ELSE 0 END), 0) AS reviewed_count,
+              AVG((EXTRACT(EPOCH FROM reviewed_at) - EXTRACT(EPOCH FROM created_at)) / 3600.0) AS average_hours,
+              MAX((EXTRACT(EPOCH FROM reviewed_at) - EXTRACT(EPOCH FROM created_at)) / 3600.0) AS max_hours,
+              MAX(CASE
+                    WHEN status = 'pending_review'
+                    THEN (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) - EXTRACT(EPOCH FROM created_at)) / 3600.0
+                    ELSE NULL
+                  END) AS oldest_pending_hours
+       FROM filtered_cases`,
+      where.values
+    );
+    const timelineRows = await client.query<TimelineCaseRow>(
+      `SELECT created_at, reviewed_at, status
+       FROM ${this.schema}.cases
+       ${where.sql}
+       ORDER BY created_at DESC
+       LIMIT 200`,
+      where.values
+    );
+
+    return {
+      statusTransitions: mapTransitionCountRow(transitionResult.rows[0]),
+      reviewLatency: mapReviewLatencyRow(latencyResult.rows[0]),
+      timeline: buildTimelineFromCaseRows(timelineRows.rows)
+    };
   }
 
   private async insertCase(
@@ -697,7 +776,10 @@ function normalizeCaseListFilters(filters: Partial<CaseListFilters>): CaseListFi
   };
 }
 
-function buildCaseListWhereClause(filters: CaseListFilters): { sql: string; values: string[] } {
+function buildCaseListWhereClause(filters: CaseListFilters): {
+  sql: string;
+  values: string[];
+} {
   const conditions: string[] = [];
   const values: string[] = [];
 
@@ -737,6 +819,81 @@ function mapCaseSummaryCountRow(row?: CaseSummaryCountRow): CaseQueueSummary {
     mediumRiskCount: Number(row?.medium_risk_count ?? 0),
     lowRiskCount: Number(row?.low_risk_count ?? 0)
   };
+}
+
+function mapTransitionCountRow(row?: TransitionCountRow): CaseStatusTransitionCounts {
+  return {
+    enteredReviewCount: Number(row?.entered_review_count ?? 0),
+    approvedCount: Number(row?.approved_count ?? 0),
+    rejectedCount: Number(row?.rejected_count ?? 0),
+    failedIngestionCount: Number(row?.failed_ingestion_count ?? 0)
+  };
+}
+
+function mapReviewLatencyRow(row?: ReviewLatencyRow): ReviewLatencySummary {
+  return {
+    reviewedCount: Number(row?.reviewed_count ?? 0),
+    averageHours: parseNullableNumber(row?.average_hours),
+    maxHours: parseNullableNumber(row?.max_hours),
+    oldestPendingHours: parseNullableNumber(row?.oldest_pending_hours)
+  };
+}
+
+function buildTimelineFromCaseRows(rows: TimelineCaseRow[]): CaseTimelinePoint[] {
+  const byDay = new Map<string, CaseTimelinePoint>();
+
+  for (const row of rows) {
+    const createdDay = toUtcDay(row.created_at);
+    const createdPoint = byDay.get(createdDay) ?? createEmptyTimelinePoint(createdDay);
+    createdPoint.createdCount += 1;
+    if (row.status === "ingestion_failed") {
+      createdPoint.failedIngestionCount += 1;
+    }
+    byDay.set(createdDay, createdPoint);
+
+    if (!row.reviewed_at) {
+      continue;
+    }
+
+    const reviewedDay = toUtcDay(row.reviewed_at);
+    const reviewedPoint = byDay.get(reviewedDay) ?? createEmptyTimelinePoint(reviewedDay);
+    reviewedPoint.reviewedCount += 1;
+    if (row.status === "approved") {
+      reviewedPoint.approvedCount += 1;
+    }
+    if (row.status === "rejected") {
+      reviewedPoint.rejectedCount += 1;
+    }
+    byDay.set(reviewedDay, reviewedPoint);
+  }
+
+  return [...byDay.values()]
+    .sort((left, right) => left.day.localeCompare(right.day))
+    .slice(-7);
+}
+
+function parseNullableNumber(value: string | null | undefined): number | null {
+  if (value == null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function createEmptyTimelinePoint(day: string): CaseTimelinePoint {
+  return {
+    day,
+    createdCount: 0,
+    reviewedCount: 0,
+    approvedCount: 0,
+    rejectedCount: 0,
+    failedIngestionCount: 0
+  };
+}
+
+function toUtcDay(value: string): string {
+  return new Date(value).toISOString().slice(0, 10);
 }
 
 function normalizeProviderFetchError(error: unknown): ProviderFetchError {

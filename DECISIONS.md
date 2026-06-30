@@ -11,6 +11,7 @@
 - Structured logs and `x-trace-id` connect the request to the case and audit trail.
 - A Next.js reviewer workspace now reads recent cases and case detail from the API so the product shows visible frontend evidence without weakening the service boundary.
 - The reviewer workspace now uses the same API to retrieve queue counts and apply status/risk/search filters, so operational visibility stays SQL-backed instead of becoming browser-only state.
+- The reviewer workspace now uses that same API contract to retrieve review-transition counts, latency summaries, and recent timeline activity, so workflow measurement stays attached to persisted backend state instead of drifting into a separate UI-only report.
 - Tests cover the happy path, approval path, high-risk fixture, invalid-wallet failure path, provider-timeout persistence, and recovery on retry.
 
 ## Current limits
@@ -33,3 +34,7 @@ The first frontend slice stays read-only and API-backed. That makes the product 
 ## Reviewer queue tradeoff
 
 Queue summaries and filters live in the API contract instead of only in React state so the same backend boundary can power both the browser workspace and future automation or reporting clients. This keeps the query logic testable at the service layer and avoids teaching the wrong lesson that operational backlog visibility belongs only in the UI.
+
+## Reviewer analytics tradeoff
+
+Review transitions, latency, and timeline metrics now live on `GET /cases` instead of a separate reporting route because the product still has one reviewer workflow and one source of truth. Keeping those analytics on the same contract demonstrates SQL-backed operational visibility without adding a second public surface that would need separate authorization, caching, and contract tests before the core workflow is finished.

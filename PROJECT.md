@@ -22,8 +22,8 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 4: implemented a bounded Next.js reviewer workspace with case list/detail, provider status, audit timeline, trace IDs, and failed-ingestion visibility backed by the existing API.
 - Slice 5: implemented reviewer queue summaries, status counts, wallet/trace query support, and URL-backed filters through the existing API so the workspace can show SQL-backed backlog pressure instead of only a recent-case grid.
 - Slice 6: implemented reviewer decision actions in the workspace with required note capture, redirect-safe refresh, and write-path validation through the same API boundary.
-- Slice 7: SQL-backed case timeline and reviewer queue analytics.
-- Slice 8: OpenTelemetry traces/metrics, a minimal Terraform sandbox, and an operational runbook.
+- Slice 7: implemented SQL-backed case timeline, review-transition counts, and review-latency analytics in the reviewer workspace.
+- Slice 8: request-stage traces and operational metrics for intake, provider fetch, and reviewer decisions.
 - Slice 9: product UI polish, sanitized seed data, architecture diagram, and release notes.
 
 ## Success evidence

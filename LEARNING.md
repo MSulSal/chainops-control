@@ -24,6 +24,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 2: cases table, normalized transactions table, immutable audit-events table, schema bootstrapping, indexes, and CI-backed PostgreSQL tests.
 - Applied in slice 3: JSONB source metadata on cases, persisted provider-failure audit events, and same-case recovery when a previously failed idempotent intake succeeds on retry.
 - Applied in slice 5: aggregate queue counts plus status/risk/search filtering from SQL so operational UI state stays backed by the stored case ledger.
+- Applied in slice 7: SQL-backed review-transition counts, review-latency aggregation, and timeline bucketing from persisted case timestamps so the workspace can explain queue pressure and operational history.
 - Docs: https://www.postgresql.org/docs/current/
 
 ## Ethereum data API
@@ -42,6 +43,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 
 - Refresh: logs vs metrics vs traces, correlation IDs, RED metrics, OpenTelemetry context propagation, CI jobs/artifacts/caches/environments.
 - Apply: trace wallet intake through ingestion and reviewer approval; alertable failure metrics; GitHub Actions quality gates.
+- Apply next: request-stage traces and operational metrics for intake, provider fetch, and reviewer decisions so queue analytics connect to deeper debugging signals.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
@@ -57,3 +59,4 @@ Be able to explain:
 6. Which metric or trace should be inspected first during a failed case run?
 7. Why does the reviewer workspace fetch from the API instead of querying PostgreSQL directly?
 8. Why keep queue summaries in the API contract instead of computing them only in React?
+9. Why keep workflow analytics on `GET /cases` instead of splitting them into a second reporting endpoint this early?

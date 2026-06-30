@@ -54,6 +54,10 @@ Queue summaries, status counts, and wallet/trace filters now stay in the same `G
 
 Reviewer approvals and rejections now originate from the Next.js case-detail page, but the browser still posts only to the existing approval API contract. The API validates a required reviewer note before persistence, and the page uses a redirect-based refresh so the queue and detail views both re-fetch authoritative state after a write instead of mutating optimistic client-only copies.
 
+## 2026-06-30 workflow-analytics decision
+
+Workflow analytics stay attached to the existing `GET /cases` contract so the reviewer workspace can show review transitions, latency, and recent timeline activity without creating a second reporting endpoint or teaching the wrong boundary. Counts and latency remain aggregated from persisted PostgreSQL case and audit state, while the service fills the daily timeline buckets after reading filtered SQL rows so the contract stays stable across local Postgres and in-memory test execution.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.
