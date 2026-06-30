@@ -103,6 +103,10 @@ a {
   padding: 24px;
 }
 
+.summary-card h2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
 .panel-stack {
   display: grid;
   gap: 20px;
@@ -111,13 +115,19 @@ a {
 .case-grid,
 .facts-grid,
 .audit-grid,
-.transaction-grid {
+.transaction-grid,
+.summary-grid {
   display: grid;
   gap: 16px;
 }
 
 .case-grid {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 24px;
 }
 
 .detail-grid {
@@ -189,6 +199,48 @@ a {
   margin-bottom: 6px;
 }
 
+.filter-header {
+  display: grid;
+  gap: 20px;
+}
+
+.filter-form {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: end;
+}
+
+.filter-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.filter-form input,
+.filter-form select,
+.filter-actions button,
+.filter-actions a {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: var(--panel-strong);
+  color: var(--ink);
+  font: inherit;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-actions button {
+  cursor: pointer;
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
 .callout {
   border-radius: 18px;
   padding: 16px 18px;
@@ -244,4 +296,3 @@ a {
     border-radius: 22px;
   }
 }
-

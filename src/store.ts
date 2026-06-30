@@ -3,7 +3,9 @@ import {
   type ApprovalDecision,
   type AuditEvent,
   buildAuditEvent,
+  type CaseListFilters,
   type CaseRecord,
+  type CaseQueueSummary,
   type CaseSummary,
   createCaseRecord,
   createFailedCaseRecord,
@@ -55,11 +57,26 @@ type StoredCaseBundle = {
   auditEvents: AuditEvent[];
 };
 
+type CaseSummaryCountRow = {
+  total: string;
+  pending_review_count: string;
+  failed_ingestion_count: string;
+  approved_count: string;
+  rejected_count: string;
+  high_risk_count: string;
+  medium_risk_count: string;
+  low_risk_count: string;
+};
+
 export type AuditStore = {
   init(): Promise<void>;
   close(): Promise<void>;
   health(): Promise<{ ok: true; caseCount: number; auditEventCount: number }>;
-  listCases(limit?: number): Promise<CaseSummary[]>;
+  listCases(filters?: Partial<CaseListFilters>): Promise<{
+    cases: CaseSummary[];
+    summary: CaseQueueSummary;
+    filters: CaseListFilters;
+  }>;
   createCase(input: {
     walletAddress: string;
     traceId: string;
@@ -139,20 +156,44 @@ export class PostgresAuditStore implements AuditStore {
     }
   }
 
-  async listCases(limit = 20): Promise<CaseSummary[]> {
+  async listCases(filters: Partial<CaseListFilters> = {}): Promise<{
+    cases: CaseSummary[];
+    summary: CaseQueueSummary;
+    filters: CaseListFilters;
+  }> {
     await this.initPromise;
     const client = await this.pool.connect();
+    const normalizedFilters = normalizeCaseListFilters(filters);
 
     try {
+      const where = buildCaseListWhereClause(normalizedFilters);
+      const countResult = await client.query<CaseSummaryCountRow>(
+        `SELECT COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN status = 'pending_review' THEN 1 ELSE 0 END), 0) AS pending_review_count,
+                COALESCE(SUM(CASE WHEN status = 'ingestion_failed' THEN 1 ELSE 0 END), 0) AS failed_ingestion_count,
+                COALESCE(SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END), 0) AS approved_count,
+                COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejected_count,
+                COALESCE(SUM(CASE WHEN risk_level = 'high' THEN 1 ELSE 0 END), 0) AS high_risk_count,
+                COALESCE(SUM(CASE WHEN risk_level = 'medium' THEN 1 ELSE 0 END), 0) AS medium_risk_count,
+                COALESCE(SUM(CASE WHEN risk_level = 'low' THEN 1 ELSE 0 END), 0) AS low_risk_count
+         FROM ${this.schema}.cases
+         ${where.sql}`,
+        where.values
+      );
       const caseResult = await client.query<CaseRow>(
         `SELECT *
          FROM ${this.schema}.cases
+         ${where.sql}
          ORDER BY created_at DESC
          LIMIT $1`,
-        [Math.max(1, Math.min(limit, 100))]
+        [...where.values, normalizedFilters.limit]
       );
 
-      return caseResult.rows.map(mapCaseSummaryRow);
+      return {
+        cases: caseResult.rows.map(mapCaseSummaryRow),
+        summary: mapCaseSummaryCountRow(countResult.rows[0]),
+        filters: normalizedFilters
+      };
     } finally {
       client.release();
     }
@@ -644,6 +685,57 @@ function mapAuditEventRow(row: AuditEventRow): AuditEvent {
     traceId: row.trace_id,
     at: new Date(row.at).toISOString(),
     details: row.details
+  };
+}
+
+function normalizeCaseListFilters(filters: Partial<CaseListFilters>): CaseListFilters {
+  return {
+    limit: Math.max(1, Math.min(filters.limit ?? 20, 100)),
+    status: filters.status,
+    riskLevel: filters.riskLevel,
+    search: filters.search?.trim() || undefined
+  };
+}
+
+function buildCaseListWhereClause(filters: CaseListFilters): { sql: string; values: string[] } {
+  const conditions: string[] = [];
+  const values: string[] = [];
+
+  if (filters.status) {
+    values.push(filters.status);
+    conditions.push(`status = $${values.length}`);
+  }
+
+  if (filters.riskLevel) {
+    values.push(filters.riskLevel);
+    conditions.push(`risk_level = $${values.length}`);
+  }
+
+  if (filters.search) {
+    values.push(`%${filters.search.toLowerCase()}%`);
+    conditions.push(`(LOWER(wallet_address) LIKE $${values.length} OR LOWER(trace_id) LIKE $${values.length})`);
+  }
+
+  if (!conditions.length) {
+    return { sql: "", values };
+  }
+
+  return {
+    sql: `WHERE ${conditions.join(" AND ")}`,
+    values
+  };
+}
+
+function mapCaseSummaryCountRow(row?: CaseSummaryCountRow): CaseQueueSummary {
+  return {
+    total: Number(row?.total ?? 0),
+    pendingReviewCount: Number(row?.pending_review_count ?? 0),
+    failedIngestionCount: Number(row?.failed_ingestion_count ?? 0),
+    approvedCount: Number(row?.approved_count ?? 0),
+    rejectedCount: Number(row?.rejected_count ?? 0),
+    highRiskCount: Number(row?.high_risk_count ?? 0),
+    mediumRiskCount: Number(row?.medium_risk_count ?? 0),
+    lowRiskCount: Number(row?.low_risk_count ?? 0)
   };
 }
 

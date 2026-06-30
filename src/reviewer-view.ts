@@ -1,4 +1,12 @@
-import type { AuditEvent, CaseRecord, CaseStatus, CaseSummary, SourceMetadata } from "./domain.ts";
+import type {
+  AuditEvent,
+  CaseListFilters,
+  CaseQueueSummary,
+  CaseRecord,
+  CaseStatus,
+  CaseSummary,
+  SourceMetadata
+} from "./domain.ts";
 
 type StatusTone = "neutral" | "warning" | "danger" | "success";
 
@@ -65,11 +73,11 @@ export function getProviderSummary(sourceMetadata?: SourceMetadata): string {
     parts.push(`error ${sourceMetadata.errorCode}`);
   }
 
-  return parts.join(" · ");
+  return parts.join(" | ");
 }
 
 export function getCaseListSubtitle(caseItem: CaseSummary): string {
-  return `${getProviderSummary(caseItem.sourceMetadata)} · trace ${caseItem.traceId}`;
+  return `${getProviderSummary(caseItem.sourceMetadata)} | trace ${caseItem.traceId}`;
 }
 
 export function getCaseDetailCallout(caseRecord: CaseRecord, auditEvents: AuditEvent[]): string | null {
@@ -81,4 +89,31 @@ export function getCaseDetailCallout(caseRecord: CaseRecord, auditEvents: AuditE
   const errorCode =
     typeof failedEvent?.details.errorCode === "string" ? failedEvent.details.errorCode : "unknown";
   return `The latest provider fetch ended in ${errorCode}. Retry the intake with the same idempotency key so the original case can recover instead of duplicating state.`;
+}
+
+export function getQueueSummaryCards(summary: CaseQueueSummary): Array<{ label: string; value: string; tone: StatusTone }> {
+  return [
+    { label: "Visible queue", value: String(summary.total), tone: "neutral" },
+    { label: "Pending review", value: String(summary.pendingReviewCount), tone: "warning" },
+    { label: "Failed ingestion", value: String(summary.failedIngestionCount), tone: "danger" },
+    { label: "High risk", value: String(summary.highRiskCount), tone: "success" }
+  ];
+}
+
+export function getActiveFilterChips(filters: CaseListFilters): string[] {
+  const chips: string[] = [];
+
+  if (filters.status) {
+    chips.push(`status:${filters.status}`);
+  }
+
+  if (filters.riskLevel) {
+    chips.push(`risk:${filters.riskLevel}`);
+  }
+
+  if (filters.search) {
+    chips.push(`query:${filters.search}`);
+  }
+
+  return chips;
 }

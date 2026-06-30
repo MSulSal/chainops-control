@@ -10,6 +10,7 @@
 - Provider failures persist as `ingestion_failed` cases and can recover the same case on retry when the original idempotency key is reused.
 - Structured logs and `x-trace-id` connect the request to the case and audit trail.
 - A Next.js reviewer workspace now reads recent cases and case detail from the API so the product shows visible frontend evidence without weakening the service boundary.
+- The reviewer workspace now uses the same API to retrieve queue counts and apply status/risk/search filters, so operational visibility stays SQL-backed instead of becoming browser-only state.
 - Tests cover the happy path, approval path, high-risk fixture, invalid-wallet failure path, provider-timeout persistence, and recovery on retry.
 
 ## Current limits
@@ -28,3 +29,7 @@ The service uses an Etherscan-compatible read-only provider seam for the first l
 ## Reviewer workspace tradeoff
 
 The first frontend slice stays read-only and API-backed. That makes the product demonstrably full-stack while avoiding a premature second write surface, direct database coupling from the UI, or fake reviewer workflows that would add scope faster than evidence.
+
+## Reviewer queue tradeoff
+
+Queue summaries and filters live in the API contract instead of only in React state so the same backend boundary can power both the browser workspace and future automation or reporting clients. This keeps the query logic testable at the service layer and avoids teaching the wrong lesson that operational backlog visibility belongs only in the UI.

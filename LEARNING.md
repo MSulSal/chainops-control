@@ -6,7 +6,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 
 - Refresh: Server vs Client Components, Route Handlers, forms, caching, error/loading boundaries, accessible state, TypeScript narrowing and generics.
 - Applied in slice 4: server-rendered reviewer workspace, typed API fetch layer, status-driven UI copy, and failed-ingestion visibility without duplicating backend state.
-- Apply next: queue filters, aggregate summaries, and a tighter browser path over the existing API.
+- Applied in slice 5: URL-backed reviewer filters, API-driven summary cards, and typed query parsing for wallet/trace search without coupling the UI directly to PostgreSQL.
+- Apply next: reviewer decision actions and note capture over the same API boundary.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -21,6 +22,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Refresh: schema constraints, indexes, transactions, upserts, JSONB tradeoffs, migrations, query plans, audit/event tables.
 - Applied in slice 2: cases table, normalized transactions table, immutable audit-events table, schema bootstrapping, indexes, and CI-backed PostgreSQL tests.
 - Applied in slice 3: JSONB source metadata on cases, persisted provider-failure audit events, and same-case recovery when a previously failed idempotent intake succeeds on retry.
+- Applied in slice 5: aggregate queue counts plus status/risk/search filtering from SQL so operational UI state stays backed by the stored case ledger.
 - Docs: https://www.postgresql.org/docs/current/
 
 ## Ethereum data API
@@ -53,3 +55,4 @@ Be able to explain:
 5. What would change between Docker Compose and a production deployment?
 6. Which metric or trace should be inspected first during a failed case run?
 7. Why does the reviewer workspace fetch from the API instead of querying PostgreSQL directly?
+8. Why keep queue summaries in the API contract instead of computing them only in React?

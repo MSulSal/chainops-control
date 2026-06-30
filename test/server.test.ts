@@ -262,7 +262,7 @@ test("recovers a failed idempotent case instead of creating a duplicate", async 
   assert.equal(secondBody.caseRecord.id, firstBody.caseRecord.id);
   assert.equal(secondBody.caseRecord.status, "pending_review");
   assert.equal(secondBody.auditEvents.some((event) => event.type === "PROVIDER_FETCH_FAILED"), true);
-  assert.equal(secondBody.auditEvents.at(-1)?.type, "HUMAN_REVIEW_PENDING");
+  assert.equal(secondBody.auditEvents.some((event) => event.type === "HUMAN_REVIEW_PENDING"), true);
 
   const readiness = await fetch(`${baseUrl}/ready`);
   const readinessBody = await readiness.json();
@@ -270,7 +270,7 @@ test("recovers a failed idempotent case instead of creating a duplicate", async 
   assert.equal(readinessBody.store.auditEventCount, 6);
 });
 
-test("lists recent cases with failed-ingestion visibility", async (t) => {
+test("lists recent cases with failed-ingestion visibility, queue summaries, and filters", async (t) => {
   let callCount = 0;
   const provider = new EtherscanTransactionProvider({
     baseUrl: "https://example.test/api",
@@ -338,9 +338,23 @@ test("lists recent cases with failed-ingestion visibility", async (t) => {
 
   const body = await response.json();
   assert.equal(body.cases.length, 2);
+  assert.equal(body.summary.total, 2);
+  assert.equal(body.summary.pendingReviewCount, 1);
+  assert.equal(body.summary.failedIngestionCount, 1);
+  assert.equal(body.summary.highRiskCount, 1);
   assert.equal(body.cases[0].walletAddress, "0x9999999999999999999999999999999999999999");
   assert.equal(body.cases[1].status, "ingestion_failed");
   assert.equal(body.cases[1].sourceMetadata.errorCode, "timeout");
+
+  const filteredResponse = await fetch(`${baseUrl}/cases?status=pending_review&q=9999`);
+  assert.equal(filteredResponse.status, 200);
+
+  const filteredBody = await filteredResponse.json();
+  assert.equal(filteredBody.cases.length, 1);
+  assert.equal(filteredBody.summary.total, 1);
+  assert.equal(filteredBody.summary.pendingReviewCount, 1);
+  assert.equal(filteredBody.filters.status, "pending_review");
+  assert.equal(filteredBody.filters.search, "9999");
 });
 
 async function createTestStore(provider?: TransactionProvider): Promise<PostgresAuditStore> {

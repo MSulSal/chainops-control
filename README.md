@@ -10,6 +10,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - Transparent risk indicators.
 - PostgreSQL-backed cases, transaction samples, source metadata, and immutable audit events.
 - Read-only Next.js reviewer workspace for case list, case detail, provider status, audit timeline, and trace IDs.
+- API-backed reviewer queue summaries, status counts, wallet/trace search, and URL-driven filters.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -67,7 +68,7 @@ Example approval body:
 
 ## Roadmap
 
-1. Add reviewer queue summaries, filters, and status counts on top of the new workspace.
+1. Add reviewer decision actions to the workspace with note capture and failure-state handling.
 2. Add a SQL-backed case timeline and reviewer queue analytics.
 3. Add metrics, traces, and release/rollback documentation.
 4. Add a minimal Terraform sandbox and deployment notes for disposable environments.

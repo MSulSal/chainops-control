@@ -1,5 +1,6 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { fileURLToPath } from "node:url";
+import type { CaseListFilters, CaseStatus, RiskLevel } from "./domain.ts";
 import { type AuditStore, PostgresAuditStore } from "./store.ts";
 import { getTraceId, writeStructuredLog } from "./logger.ts";
 import { normalizeApprovalDecision } from "./domain.ts";
@@ -27,9 +28,8 @@ export function createApp(store: AuditStore) {
       }
 
       if (request.method === "GET" && url.pathname === "/cases") {
-        const limit = Number(url.searchParams.get("limit") ?? "20");
-        const cases = await store.listCases(Number.isFinite(limit) ? limit : 20);
-        return sendJson(response, 200, { cases });
+        const cases = await store.listCases(readCaseListFilters(url.searchParams));
+        return sendJson(response, 200, cases);
       }
 
       if (request.method === "POST" && url.pathname === "/cases") {
@@ -102,6 +102,45 @@ export function createApp(store: AuditStore) {
       return sendJson(response, status, { error: (error as Error).message, traceId });
     }
   });
+}
+
+function readCaseListFilters(searchParams: URLSearchParams): Partial<CaseListFilters> {
+  return {
+    limit: readLimit(searchParams.get("limit")),
+    status: readEnumValue<CaseStatus>(searchParams.get("status"), [
+      "pending_review",
+      "approved",
+      "rejected",
+      "ingestion_failed"
+    ]),
+    riskLevel: readEnumValue<RiskLevel>(searchParams.get("risk"), ["low", "medium", "high"]),
+    search: searchParams.get("q")?.trim() || undefined
+  };
+}
+
+function readLimit(value: string | null): number | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    throw new Error("limit must be a positive number");
+  }
+
+  return parsed;
+}
+
+function readEnumValue<T extends string>(value: string | null, allowed: T[]): T | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (!allowed.includes(value as T)) {
+    throw new Error(`invalid value: ${value}`);
+  }
+
+  return value as T;
 }
 
 async function readJsonBody(request: IncomingMessage): Promise<JsonBody> {

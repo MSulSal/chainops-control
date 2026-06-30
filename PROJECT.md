@@ -20,9 +20,10 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 2: implemented PostgreSQL persistence in Docker Compose, schema bootstrapping, CI-backed database tests, and duplicate-intake replay through `Idempotency-Key`.
 - Slice 3: implemented an Etherscan-compatible read-only ingestion seam, deterministic local fallback, source-metadata persistence, provider-failure audit events, and idempotent recovery tests.
 - Slice 4: implemented a bounded Next.js reviewer workspace with case list/detail, provider status, audit timeline, trace IDs, and failed-ingestion visibility backed by the existing API.
-- Slice 5: reviewer queue summaries, filters, and SQL-backed case analytics.
-- Slice 6: OpenTelemetry traces/metrics, a minimal Terraform sandbox, and an operational runbook.
-- Slice 7: product UI polish, sanitized seed data, architecture diagram, and release notes.
+- Slice 5: implemented reviewer queue summaries, status counts, wallet/trace query support, and URL-backed filters through the existing API so the workspace can show SQL-backed backlog pressure instead of only a recent-case grid.
+- Slice 6: reviewer decision actions in the workspace with note capture and failure-state handling.
+- Slice 7: OpenTelemetry traces/metrics, a minimal Terraform sandbox, and an operational runbook.
+- Slice 8: product UI polish, sanitized seed data, architecture diagram, and release notes.
 
 ## Success evidence
 

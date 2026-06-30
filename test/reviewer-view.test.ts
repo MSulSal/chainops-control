@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getCaseDetailCallout, getCaseListSubtitle, getProviderSummary, getStatusCopy } from "../src/reviewer-view.ts";
+import {
+  getActiveFilterChips,
+  getCaseDetailCallout,
+  getCaseListSubtitle,
+  getProviderSummary,
+  getQueueSummaryCards,
+  getStatusCopy
+} from "../src/reviewer-view.ts";
 
 test("builds reviewer list copy for a healthy pending-review case", () => {
   const status = getStatusCopy("pending_review");
@@ -84,4 +91,27 @@ test("surfaces retry-safe failed-ingestion guidance in the detail view", () => {
   }), /error timeout/);
   assert.ok(callout);
   assert.match(callout, /same idempotency key/);
+});
+
+test("builds summary cards and active filter chips for the reviewer workspace", () => {
+  const cards = getQueueSummaryCards({
+    total: 9,
+    pendingReviewCount: 4,
+    failedIngestionCount: 2,
+    approvedCount: 2,
+    rejectedCount: 1,
+    highRiskCount: 3,
+    mediumRiskCount: 4,
+    lowRiskCount: 2
+  });
+  const chips = getActiveFilterChips({
+    limit: 50,
+    status: "pending_review",
+    riskLevel: "high",
+    search: "trace-123"
+  });
+
+  assert.equal(cards[0].label, "Visible queue");
+  assert.equal(cards[1].value, "4");
+  assert.deepEqual(chips, ["status:pending_review", "risk:high", "query:trace-123"]);
 });

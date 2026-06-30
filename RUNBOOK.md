@@ -35,9 +35,10 @@ Expected result:
 ## Reviewer workspace smoke test
 
 1. Open `http://127.0.0.1:3000`.
-2. Confirm the new case appears in the recent-case grid.
-3. Open the case detail page and confirm the provider summary, trace ID, transaction sample, and audit timeline render.
-4. If the provider times out, confirm the workspace shows `Ingestion failed` plus retry-safe guidance about reusing the same idempotency key.
+2. Confirm the new case appears in the recent-case grid and that the summary cards update with the expected pending-review and high-risk counts.
+3. Use the filter bar to search by wallet suffix or trace ID and confirm the URL preserves the active query.
+4. Open the case detail page and confirm the provider summary, trace ID, transaction sample, and audit timeline render.
+5. If the provider times out, confirm the workspace shows `Ingestion failed` plus retry-safe guidance about reusing the same idempotency key.
 
 ## Human approval
 
@@ -59,4 +60,4 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - Live Ethereum ingestion currently uses an Etherscan-compatible read-only seam; there is no direct JSON-RPC address-indexed worker yet.
 - PostgreSQL is local Docker Compose infrastructure only; there is no cloud deployment or managed database.
 - Risk indicators are deterministic and human approval is mandatory.
-- The reviewer workspace is read-only in this slice; approval still happens through the API.
+- The reviewer workspace is still read-only in this slice; approval still happens through the API.

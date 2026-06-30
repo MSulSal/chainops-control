@@ -48,6 +48,24 @@ export type CaseSummary = Pick<
   "id" | "walletAddress" | "status" | "risk" | "sourceMetadata" | "traceId" | "createdAt" | "reviewedAt"
 >;
 
+export type CaseListFilters = {
+  limit: number;
+  status?: CaseStatus;
+  riskLevel?: RiskLevel;
+  search?: string;
+};
+
+export type CaseQueueSummary = {
+  total: number;
+  pendingReviewCount: number;
+  failedIngestionCount: number;
+  approvedCount: number;
+  rejectedCount: number;
+  highRiskCount: number;
+  mediumRiskCount: number;
+  lowRiskCount: number;
+};
+
 export type AuditEvent = {
   id: string;
   caseId: string;

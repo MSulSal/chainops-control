@@ -1,12 +1,33 @@
-import type { AuditEvent, CaseRecord, CaseSummary } from "./domain.ts";
+import type {
+  AuditEvent,
+  CaseListFilters,
+  CaseQueueSummary,
+  CaseRecord,
+  CaseSummary,
+  CaseStatus,
+  RiskLevel
+} from "./domain.ts";
 
 export type CaseDetailResponse = {
   caseRecord: CaseRecord;
   auditEvents: AuditEvent[];
 };
 
-export async function fetchCaseSummaries(limit = 20): Promise<CaseSummary[]> {
-  const response = await fetch(`${getApiBaseUrl()}/cases?limit=${limit}`, {
+export type CaseListResponse = {
+  cases: CaseSummary[];
+  summary: CaseQueueSummary;
+  filters: CaseListFilters;
+};
+
+export type ReviewerWorkspaceFilters = {
+  limit?: number;
+  status?: CaseStatus;
+  risk?: RiskLevel;
+  query?: string;
+};
+
+export async function fetchCaseSummaries(filters: ReviewerWorkspaceFilters = {}): Promise<CaseListResponse> {
+  const response = await fetch(`${getApiBaseUrl()}/cases?${buildCaseListQuery(filters)}`, {
     cache: "no-store"
   });
 
@@ -14,8 +35,7 @@ export async function fetchCaseSummaries(limit = 20): Promise<CaseSummary[]> {
     throw new Error(`failed to load cases: ${response.status}`);
   }
 
-  const payload = (await response.json()) as { cases: CaseSummary[] };
-  return payload.cases;
+  return (await response.json()) as CaseListResponse;
 }
 
 export async function fetchCaseDetail(caseId: string): Promise<CaseDetailResponse | null> {
@@ -36,4 +56,26 @@ export async function fetchCaseDetail(caseId: string): Promise<CaseDetailRespons
 
 function getApiBaseUrl(): string {
   return process.env.CHAINOPS_API_BASE_URL?.trim() || "http://127.0.0.1:4317";
+}
+
+function buildCaseListQuery(filters: ReviewerWorkspaceFilters): string {
+  const params = new URLSearchParams();
+
+  if (filters.limit) {
+    params.set("limit", String(filters.limit));
+  }
+
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+
+  if (filters.risk) {
+    params.set("risk", filters.risk);
+  }
+
+  if (filters.query?.trim()) {
+    params.set("q", filters.query.trim());
+  }
+
+  return params.toString();
 }

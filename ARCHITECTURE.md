@@ -46,6 +46,10 @@ The current ingestion boundary uses an Etherscan-compatible read-only adapter wi
 
 The first UI slice is a read-only Next.js workspace that fetches from the existing API instead of reading PostgreSQL directly. That keeps the service boundary explicit, adds real React/Next.js evidence, and makes failed-ingestion and trace visibility shippable without expanding immediately into edit flows, auth, or a second write path.
 
+## 2026-06-30 reviewer-queue decision
+
+Queue summaries, status counts, and wallet/trace filters now stay in the same `GET /cases` API boundary instead of becoming client-only transforms. The API owns filter normalization and aggregate SQL so the workspace can demonstrate operational visibility over real persisted state while keeping the browser contract narrow enough for the next slice to add reviewer actions cleanly.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.
