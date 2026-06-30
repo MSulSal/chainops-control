@@ -26,6 +26,12 @@ export function createApp(store: AuditStore) {
         return sendJson(response, 200, { status: "ready", store: health });
       }
 
+      if (request.method === "GET" && url.pathname === "/cases") {
+        const limit = Number(url.searchParams.get("limit") ?? "20");
+        const cases = await store.listCases(Number.isFinite(limit) ? limit : 20);
+        return sendJson(response, 200, { cases });
+      }
+
       if (request.method === "POST" && url.pathname === "/cases") {
         const body = await readJsonBody(request);
         const created = await store.createCase({

@@ -9,6 +9,7 @@
 - An optional `Idempotency-Key` header replays duplicate intake requests instead of creating a second case.
 - Provider failures persist as `ingestion_failed` cases and can recover the same case on retry when the original idempotency key is reused.
 - Structured logs and `x-trace-id` connect the request to the case and audit trail.
+- A Next.js reviewer workspace now reads recent cases and case detail from the API so the product shows visible frontend evidence without weakening the service boundary.
 - Tests cover the happy path, approval path, high-risk fixture, invalid-wallet failure path, provider-timeout persistence, and recovery on retry.
 
 ## Current limits
@@ -23,3 +24,7 @@ The first slice used a JSON-file adapter to prove the workflow quickly. The curr
 ## Provider seam tradeoff
 
 The service uses an Etherscan-compatible read-only provider seam for the first live-ingestion slice because it exposes bounded address history directly, which keeps the implementation small enough for a 3-4 day core. A deterministic fixture provider remains available for offline development and tests so the product can demonstrate retries, failure persistence, and case recovery without depending on paid infrastructure.
+
+## Reviewer workspace tradeoff
+
+The first frontend slice stays read-only and API-backed. That makes the product demonstrably full-stack while avoiding a premature second write surface, direct database coupling from the UI, or fake reviewer workflows that would add scope faster than evidence.

@@ -43,6 +43,11 @@ export type CaseRecord = {
   reviewerNote?: string;
 };
 
+export type CaseSummary = Pick<
+  CaseRecord,
+  "id" | "walletAddress" | "status" | "risk" | "sourceMetadata" | "traceId" | "createdAt" | "reviewedAt"
+>;
+
 export type AuditEvent = {
   id: string;
   caseId: string;

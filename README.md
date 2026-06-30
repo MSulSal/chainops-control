@@ -9,6 +9,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - Read-only Ethereum ingestion seam with a deterministic local fallback.
 - Transparent risk indicators.
 - PostgreSQL-backed cases, transaction samples, source metadata, and immutable audit events.
+- Read-only Next.js reviewer workspace for case list, case detail, provider status, audit timeline, and trace IDs.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -24,9 +25,11 @@ $env:CHAINOPS_DATABASE_URL = "postgres://chainops:chainops@127.0.0.1:5432/chaino
 $env:CHAINOPS_ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
 npm test
 npm start
+npm run start:web
 ```
 
 The service listens on `http://127.0.0.1:4317`.
+The reviewer workspace listens on `http://127.0.0.1:3000` and reads the API through `CHAINOPS_API_BASE_URL` when that variable is set. Otherwise it defaults to the local API at `http://127.0.0.1:4317`.
 
 Without `CHAINOPS_ETHERSCAN_BASE_URL`, the service uses a deterministic local fixture provider so the workflow stays runnable without external credentials.
 
@@ -34,6 +37,7 @@ Without `CHAINOPS_ETHERSCAN_BASE_URL`, the service uses a deterministic local fi
 
 - `GET /health`
 - `GET /ready`
+- `GET /cases`
 - `POST /cases`
 - `GET /cases/:id`
 - `POST /cases/:id/approval`
@@ -63,10 +67,10 @@ Example approval body:
 
 ## Roadmap
 
-1. Add a read-only Ethereum data adapter with retry and provider-failure handling.
-2. Add a reviewer dashboard for status, evidence, provider errors, retries, and trace IDs.
-3. Add a SQL-backed case timeline and reviewer queue summary.
-4. Add metrics, traces, and release/rollback documentation.
+1. Add reviewer queue summaries, filters, and status counts on top of the new workspace.
+2. Add a SQL-backed case timeline and reviewer queue analytics.
+3. Add metrics, traces, and release/rollback documentation.
+4. Add a minimal Terraform sandbox and deployment notes for disposable environments.
 
 ## Boundaries
 

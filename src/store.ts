@@ -4,6 +4,7 @@ import {
   type AuditEvent,
   buildAuditEvent,
   type CaseRecord,
+  type CaseSummary,
   createCaseRecord,
   createFailedCaseRecord,
   normalizeWalletAddress,
@@ -58,6 +59,7 @@ export type AuditStore = {
   init(): Promise<void>;
   close(): Promise<void>;
   health(): Promise<{ ok: true; caseCount: number; auditEventCount: number }>;
+  listCases(limit?: number): Promise<CaseSummary[]>;
   createCase(input: {
     walletAddress: string;
     traceId: string;
@@ -132,6 +134,25 @@ export class PostgresAuditStore implements AuditStore {
         caseCount: Number(caseCountResult.rows[0].count),
         auditEventCount: Number(auditCountResult.rows[0].count)
       };
+    } finally {
+      client.release();
+    }
+  }
+
+  async listCases(limit = 20): Promise<CaseSummary[]> {
+    await this.initPromise;
+    const client = await this.pool.connect();
+
+    try {
+      const caseResult = await client.query<CaseRow>(
+        `SELECT *
+         FROM ${this.schema}.cases
+         ORDER BY created_at DESC
+         LIMIT $1`,
+        [Math.max(1, Math.min(limit, 100))]
+      );
+
+      return caseResult.rows.map(mapCaseSummaryRow);
     } finally {
       client.release();
     }
@@ -595,6 +616,23 @@ function mapCaseRow(caseRow: CaseRow, transactionRows: TransactionRow[]): CaseRe
     createdAt: new Date(caseRow.created_at).toISOString(),
     reviewedAt: caseRow.reviewed_at ? new Date(caseRow.reviewed_at).toISOString() : undefined,
     reviewerNote: caseRow.reviewer_note ?? undefined
+  };
+}
+
+function mapCaseSummaryRow(caseRow: CaseRow): CaseSummary {
+  return {
+    id: caseRow.id,
+    walletAddress: caseRow.wallet_address,
+    status: caseRow.status,
+    risk: {
+      level: caseRow.risk_level,
+      score: caseRow.risk_score,
+      indicators: caseRow.risk_indicators
+    },
+    sourceMetadata: caseRow.source_metadata ?? undefined,
+    traceId: caseRow.trace_id,
+    createdAt: new Date(caseRow.created_at).toISOString(),
+    reviewedAt: caseRow.reviewed_at ? new Date(caseRow.reviewed_at).toISOString() : undefined
   };
 }
 

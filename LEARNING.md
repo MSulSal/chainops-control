@@ -5,7 +5,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 ## Next.js, React, and TypeScript
 
 - Refresh: Server vs Client Components, Route Handlers, forms, caching, error/loading boundaries, accessible state, TypeScript narrowing and generics.
-- Apply: case intake UI, evidence table, approval workflow, typed API client, and browser tests.
+- Applied in slice 4: server-rendered reviewer workspace, typed API fetch layer, status-driven UI copy, and failed-ingestion visibility without duplicating backend state.
+- Apply next: queue filters, aggregate summaries, and a tighter browser path over the existing API.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -51,3 +52,4 @@ Be able to explain:
 4. How do schema validation, audit events, and human approval reduce case-review risk?
 5. What would change between Docker Compose and a production deployment?
 6. Which metric or trace should be inspected first during a failed case run?
+7. Why does the reviewer workspace fetch from the API instead of querying PostgreSQL directly?

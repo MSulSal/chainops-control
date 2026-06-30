@@ -4,13 +4,14 @@
 
 ```text
 Implemented local slice
-  -> Node.js / TypeScript REST API
-      -> Ethereum provider seam (Etherscan-compatible adapter or deterministic fixture fallback)
-      -> PostgreSQL store (cases, source metadata, transactions, audit events)
-      -> deterministic risk rules
-      -> human approval endpoint
-      -> health/readiness endpoints
-      -> structured logs and trace IDs
+  -> Next.js reviewer workspace
+      -> Node.js / TypeScript REST API
+          -> Ethereum provider seam (Etherscan-compatible adapter or deterministic fixture fallback)
+          -> PostgreSQL store (cases, source metadata, transactions, audit events)
+          -> deterministic risk rules
+          -> human approval endpoint
+          -> health/readiness endpoints
+          -> structured logs and trace IDs
 
 Planned production-shaped progression
   -> Next.js web
@@ -40,6 +41,10 @@ Planned production-shaped progression
 ## 2026-06-29 provider-slice decision
 
 The current ingestion boundary uses an Etherscan-compatible read-only adapter with timeout and retry behavior, but keeps a deterministic fallback provider for local development and tests. Provider failures are persisted as `ingestion_failed` cases with immutable audit events so the same `Idempotency-Key` can recover the original case instead of creating a duplicate row when a retry succeeds later.
+
+## 2026-06-29 reviewer-workspace decision
+
+The first UI slice is a read-only Next.js workspace that fetches from the existing API instead of reading PostgreSQL directly. That keeps the service boundary explicit, adds real React/Next.js evidence, and makes failed-ingestion and trace visibility shippable without expanding immediately into edit flows, auth, or a second write path.
 
 ## 2026-06-29 slice decision
 

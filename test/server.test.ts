@@ -270,6 +270,79 @@ test("recovers a failed idempotent case instead of creating a duplicate", async 
   assert.equal(readinessBody.store.auditEventCount, 6);
 });
 
+test("lists recent cases with failed-ingestion visibility", async (t) => {
+  let callCount = 0;
+  const provider = new EtherscanTransactionProvider({
+    baseUrl: "https://example.test/api",
+    timeoutMs: 5,
+    maxAttempts: 1,
+    retryDelayMs: 0,
+    fetcher: async (_url, init) => {
+      callCount += 1;
+      if (callCount === 1) {
+        await new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          status: "1",
+          result: [
+            {
+              hash: "0xbbbbccccddddeeeeffff0000111122223333444455556666777788889999aaaa",
+              from: "0x3333333333333333333333333333333333333333",
+              to: "0x1111111111111111111111111111111111111111",
+              value: "500000000000000000",
+              confirmations: "25"
+            }
+          ]
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        }
+      );
+    }
+  });
+  const store = await createTestStore(provider);
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "idempotency-key": "list-failed-1"
+    },
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+
+  await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ walletAddress: "0x9999999999999999999999999999999999999999" })
+  });
+
+  const response = await fetch(`${baseUrl}/cases?limit=10`);
+  assert.equal(response.status, 200);
+
+  const body = await response.json();
+  assert.equal(body.cases.length, 2);
+  assert.equal(body.cases[0].walletAddress, "0x9999999999999999999999999999999999999999");
+  assert.equal(body.cases[1].status, "ingestion_failed");
+  assert.equal(body.cases[1].sourceMetadata.errorCode, "timeout");
+});
+
 async function createTestStore(provider?: TransactionProvider): Promise<PostgresAuditStore> {
   const schema = `test_${randomUUID().replaceAll("-", "_")}`;
   const databaseUrl = process.env.CHAINOPS_DATABASE_URL;
