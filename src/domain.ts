@@ -264,3 +264,20 @@ export function normalizeApprovalDecision(value: unknown): ApprovalDecision {
 
   return value;
 }
+
+export function normalizeReviewerNote(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new Error("reviewer note is required");
+  }
+
+  const normalized = value.trim();
+  if (!normalized) {
+    throw new Error("reviewer note is required");
+  }
+
+  if (normalized.length > 500) {
+    throw new Error("reviewer note must be 500 characters or fewer");
+  }
+
+  return normalized;
+}

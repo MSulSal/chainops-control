@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import type { CaseListFilters, CaseStatus, RiskLevel } from "./domain.ts";
 import { type AuditStore, PostgresAuditStore } from "./store.ts";
 import { getTraceId, writeStructuredLog } from "./logger.ts";
-import { normalizeApprovalDecision } from "./domain.ts";
+import { normalizeApprovalDecision, normalizeReviewerNote } from "./domain.ts";
 import { createDefaultTransactionProviderFromEnv } from "./provider.ts";
 
 type JsonBody = Record<string, unknown>;
@@ -73,12 +73,13 @@ export function createApp(store: AuditStore) {
       if (request.method === "POST" && approvalMatch) {
         const body = await readJsonBody(request);
         const decision = normalizeApprovalDecision(body.decision);
+        const note = normalizeReviewerNote(body.note);
         const approved = await store.approveCase({
           caseId: approvalMatch[1],
           decision,
           traceId,
           now: new Date().toISOString(),
-          note: typeof body.note === "string" ? body.note : undefined
+          note
         });
 
         writeStructuredLog("case.reviewed", {

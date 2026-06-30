@@ -1,19 +1,29 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { fetchCaseDetail } from "../../../src/reviewer-data";
+import { notFound, redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { fetchCaseDetail, submitCaseDecision } from "../../../src/reviewer-data";
 import {
   formatTimestamp,
   getCaseDetailCallout,
   getProviderSummary,
   getStatusCopy
 } from "../../../src/reviewer-view.ts";
+import { ReviewSubmitButton } from "./review-submit";
 
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ id: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>> | Record<string, string | string[] | undefined>;
 
-export default async function CaseDetailPage({ params }: { params: Params }) {
+export default async function CaseDetailPage({
+  params,
+  searchParams
+}: {
+  params: Params;
+  searchParams?: SearchParams;
+}) {
   const { id } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
   const detail = await fetchCaseDetail(id);
 
   if (!detail) {
@@ -22,6 +32,28 @@ export default async function CaseDetailPage({ params }: { params: Params }) {
 
   const status = getStatusCopy(detail.caseRecord.status);
   const callout = getCaseDetailCallout(detail.caseRecord, detail.auditEvents);
+  const flash = readStringParam(resolvedSearchParams.flash);
+  const error = readStringParam(resolvedSearchParams.error);
+
+  async function reviewCase(formData: FormData) {
+    "use server";
+
+    try {
+      const decision = formData.get("decision");
+      const note = formData.get("note");
+      const reviewed = await submitCaseDecision(id, {
+        decision: decision === "reject" ? "reject" : "approve",
+        note: typeof note === "string" ? note : ""
+      });
+
+      revalidatePath("/");
+      revalidatePath(`/cases/${id}`);
+      redirect(`/cases/${id}?flash=${reviewed.caseRecord.status}`);
+    } catch (reviewError) {
+      const message = encodeURIComponent((reviewError as Error).message);
+      redirect(`/cases/${id}?error=${message}`);
+    }
+  }
 
   return (
     <main className="shell">
@@ -42,6 +74,13 @@ export default async function CaseDetailPage({ params }: { params: Params }) {
             <p className="muted">{status.description}</p>
           </div>
 
+          {flash === "approved" ? (
+            <div className="callout callout-success">Reviewer decision saved. The case is now approved.</div>
+          ) : null}
+          {flash === "rejected" ? (
+            <div className="callout callout-danger">Reviewer decision saved. The case is now rejected.</div>
+          ) : null}
+          {error ? <div className="callout callout-danger">{error}</div> : null}
           {callout ? <div className="callout callout-danger">{callout}</div> : null}
 
           <div className="detail-grid">
@@ -86,6 +125,10 @@ export default async function CaseDetailPage({ params }: { params: Params }) {
                     <span className="muted">{formatTimestamp(detail.caseRecord.reviewedAt)}</span>
                   </div>
                   <div className="fact">
+                    <strong>Reviewer note</strong>
+                    <span className="muted">{detail.caseRecord.reviewerNote ?? "Not recorded yet"}</span>
+                  </div>
+                  <div className="fact">
                     <strong>Trace ID</strong>
                     <span className="mono">{detail.caseRecord.traceId}</span>
                   </div>
@@ -95,6 +138,36 @@ export default async function CaseDetailPage({ params }: { params: Params }) {
           </div>
         </div>
       </section>
+
+      {detail.caseRecord.status === "pending_review" ? (
+        <section className="panel" style={{ marginTop: 24 }}>
+          <div className="panel-stack">
+            <div>
+              <p className="eyebrow">Reviewer action</p>
+              <h2>Record the human decision</h2>
+              <p className="muted">
+                A reviewer note is required so approval and rejection remain traceable in the audit history.
+              </p>
+            </div>
+            <form action={reviewCase} className="review-form">
+              <label>
+                <span className="eyebrow">Decision note</span>
+                <textarea
+                  name="note"
+                  rows={5}
+                  maxLength={500}
+                  placeholder="Summarize the evidence, caveat, or reason for this reviewer decision."
+                  required
+                />
+              </label>
+              <div className="filter-actions">
+                <ReviewSubmitButton decision="approve" />
+                <ReviewSubmitButton decision="reject" />
+              </div>
+            </form>
+          </div>
+        </section>
+      ) : null}
 
       <section className="detail-grid" style={{ marginTop: 24 }}>
         <div className="panel">
@@ -148,4 +221,12 @@ export default async function CaseDetailPage({ params }: { params: Params }) {
       </section>
     </main>
   );
+}
+
+function readStringParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0]?.trim() || undefined;
+  }
+
+  return value?.trim() || undefined;
 }

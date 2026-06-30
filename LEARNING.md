@@ -7,7 +7,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Refresh: Server vs Client Components, Route Handlers, forms, caching, error/loading boundaries, accessible state, TypeScript narrowing and generics.
 - Applied in slice 4: server-rendered reviewer workspace, typed API fetch layer, status-driven UI copy, and failed-ingestion visibility without duplicating backend state.
 - Applied in slice 5: URL-backed reviewer filters, API-driven summary cards, and typed query parsing for wallet/trace search without coupling the UI directly to PostgreSQL.
-- Apply next: reviewer decision actions and note capture over the same API boundary.
+- Applied in slice 6: server-action form handling, redirect-safe cache refresh, and required reviewer-note capture over the same API boundary.
+- Apply next: SQL-backed reviewer timeline analytics and richer operational breakdowns.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service

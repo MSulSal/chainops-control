@@ -26,6 +26,11 @@ export type ReviewerWorkspaceFilters = {
   query?: string;
 };
 
+export type CaseDecisionInput = {
+  decision: "approve" | "reject";
+  note: string;
+};
+
 export async function fetchCaseSummaries(filters: ReviewerWorkspaceFilters = {}): Promise<CaseListResponse> {
   const response = await fetch(`${getApiBaseUrl()}/cases?${buildCaseListQuery(filters)}`, {
     cache: "no-store"
@@ -52,6 +57,34 @@ export async function fetchCaseDetail(caseId: string): Promise<CaseDetailRespons
   }
 
   return (await response.json()) as CaseDetailResponse;
+}
+
+export async function submitCaseDecision(
+  caseId: string,
+  input: CaseDecisionInput
+): Promise<CaseDetailResponse> {
+  const response = await fetch(`${getApiBaseUrl()}/cases/${caseId}/approval`, {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(input)
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error || `failed to review case ${caseId}: ${response.status}`);
+  }
+
+  const reviewed = (await response.json()) as { caseRecord: CaseRecord };
+  return fetchCaseDetail(reviewed.caseRecord.id).then((detail) => {
+    if (!detail) {
+      throw new Error(`failed to reload case ${caseId} after review`);
+    }
+
+    return detail;
+  });
 }
 
 function getApiBaseUrl(): string {

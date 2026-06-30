@@ -4,6 +4,7 @@ import {
   buildTransactionSample,
   createFailedCaseRecord,
   evaluateRisk,
+  normalizeReviewerNote,
   normalizeWalletAddress
 } from "../src/domain.ts";
 
@@ -19,6 +20,11 @@ test("rejects invalid wallet addresses", () => {
     () => normalizeWalletAddress("0xnot-a-wallet"),
     /0x-prefixed 40-byte hex address/
   );
+});
+
+test("normalizes and requires reviewer notes", () => {
+  assert.equal(normalizeReviewerNote("  reviewed fixture evidence  "), "reviewed fixture evidence");
+  assert.throws(() => normalizeReviewerNote("   "), /reviewer note is required/);
 });
 
 test("computes deterministic high risk for flagged wallet fixtures", () => {

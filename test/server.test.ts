@@ -97,6 +97,46 @@ test("returns a validation failure without creating a case", async (t) => {
   assert.equal(readinessBody.store.auditEventCount, 0);
 });
 
+test("rejects reviewer decisions that do not include a note", async (t) => {
+  const store = await createTestStore();
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const createResponse = await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-request-id": "trace-review-note-1"
+    },
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+  const created = await createResponse.json();
+
+  const reviewResponse = await fetch(`${baseUrl}/cases/${created.caseRecord.id}/approval`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ decision: "approve", note: "   " })
+  });
+
+  assert.equal(reviewResponse.status, 400);
+  const reviewBody = await reviewResponse.json();
+  assert.match(reviewBody.error, /reviewer note is required/);
+
+  const readResponse = await fetch(`${baseUrl}/cases/${created.caseRecord.id}`);
+  const found = await readResponse.json();
+  assert.equal(found.caseRecord.status, "pending_review");
+  assert.equal(found.caseRecord.reviewerNote, undefined);
+});
+
 test("replays duplicate intake requests when the same idempotency key is supplied", async (t) => {
   const store = await createTestStore();
   const app = createApp(store);
