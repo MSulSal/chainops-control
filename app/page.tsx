@@ -4,6 +4,7 @@ import { fetchCaseSummaries, type ReviewerWorkspaceFilters } from "../src/review
 import {
   formatTimestamp,
   getActiveFilterChips,
+  getWorkspaceOperationalGuide,
   getOperationalMetricCards,
   getQueueAnalyticsCards,
   getCaseListSubtitle,
@@ -31,6 +32,7 @@ export default async function ReviewerWorkspacePage({
   const analyticsCards = getQueueAnalyticsCards(analytics);
   const latencyCards = getReviewLatencyCards(analytics);
   const operationalCards = getOperationalMetricCards(analytics);
+  const operationalGuide = getWorkspaceOperationalGuide(summary, analytics);
   const timelineBars = getTimelineBars(analytics.timeline);
 
   return (
@@ -147,6 +149,54 @@ export default async function ReviewerWorkspacePage({
                 <p className="muted">{card.description}</p>
               </article>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel-stack">
+          <div>
+            <p className="eyebrow">Release response guide</p>
+            <h2>{operationalGuide.title}</h2>
+            <p className="muted">
+              Queue-level release and rollback guidance stays derived from persisted case and audit evidence instead of a separate incident tracker.
+            </p>
+          </div>
+          <div className="chip-row">
+            <span className={`chip chip-${operationalGuide.tone}`}>{operationalGuide.statusLabel}</span>
+            <span className="chip chip-neutral">summary from current filters</span>
+          </div>
+          <div className="facts-grid">
+            <div className="fact">
+              <strong>Summary</strong>
+              <span className="muted">{operationalGuide.summary}</span>
+            </div>
+            <div className="fact">
+              <strong>Release decision</strong>
+              <span className="muted">{operationalGuide.releaseDecision}</span>
+            </div>
+            <div className="fact">
+              <strong>Rollback trigger</strong>
+              <span className="muted">{operationalGuide.rollbackDecision}</span>
+            </div>
+          </div>
+          <div className="detail-grid detail-grid-balanced">
+            <article className="metric-card">
+              <p className="eyebrow">Next operator actions</p>
+              <ul className="response-list">
+                {operationalGuide.actions.map((action) => (
+                  <li key={action}>{action}</li>
+                ))}
+              </ul>
+            </article>
+            <article className="metric-card">
+              <p className="eyebrow">Evidence behind this call</p>
+              <ul className="response-list">
+                {operationalGuide.evidence.map((evidence) => (
+                  <li key={evidence}>{evidence}</li>
+                ))}
+              </ul>
+            </article>
           </div>
         </div>
       </section>

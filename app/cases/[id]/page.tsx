@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { fetchCaseDetail, submitCaseDecision } from "../../../src/reviewer-data";
 import {
+  getCaseOperationalGuide,
   getCaseStageTrace,
   formatTimestamp,
   getCaseDetailCallout,
@@ -34,6 +35,7 @@ export default async function CaseDetailPage({
   const status = getStatusCopy(detail.caseRecord.status);
   const callout = getCaseDetailCallout(detail.caseRecord, detail.auditEvents);
   const stageTrace = getCaseStageTrace(detail.caseRecord, detail.auditEvents);
+  const operationalGuide = getCaseOperationalGuide(detail.caseRecord, detail.auditEvents);
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -189,6 +191,48 @@ export default async function CaseDetailPage({
                   <p className="muted">{stage.detail}</p>
                 </article>
               ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-stack">
+            <div>
+              <p className="eyebrow">Incident guide</p>
+              <h2>{operationalGuide.title}</h2>
+              <p className="muted">{operationalGuide.summary}</p>
+            </div>
+            <div className="chip-row">
+              <span className={`chip chip-${operationalGuide.tone}`}>{operationalGuide.statusLabel}</span>
+              <span className="chip chip-neutral">trace-backed response</span>
+            </div>
+            <div className="facts-grid">
+              <div className="fact">
+                <strong>Release decision</strong>
+                <span className="muted">{operationalGuide.releaseDecision}</span>
+              </div>
+              <div className="fact">
+                <strong>Rollback trigger</strong>
+                <span className="muted">{operationalGuide.rollbackDecision}</span>
+              </div>
+            </div>
+            <div className="detail-grid detail-grid-balanced">
+              <article className="metric-card">
+                <p className="eyebrow">Operator actions</p>
+                <ul className="response-list">
+                  {operationalGuide.actions.map((action) => (
+                    <li key={action}>{action}</li>
+                  ))}
+                </ul>
+              </article>
+              <article className="metric-card">
+                <p className="eyebrow">Case evidence</p>
+                <ul className="response-list">
+                  {operationalGuide.evidence.map((evidence) => (
+                    <li key={evidence}>{evidence}</li>
+                  ))}
+                </ul>
+              </article>
             </div>
           </div>
         </div>

@@ -14,6 +14,10 @@ type StatusTone = "neutral" | "warning" | "danger" | "success";
 
 type TraceStageTone = Extract<StatusTone, "neutral" | "warning" | "danger" | "success">;
 
+const STALLED_PENDING_HOURS = 24;
+const BACKLOG_WARNING_COUNT = 5;
+const SLOW_STAGE_WARNING_MS = 1500;
+
 export type StageTraceCard = {
   key: string;
   label: string;
@@ -27,6 +31,17 @@ export type StatusCopy = {
   label: string;
   tone: StatusTone;
   description: string;
+};
+
+export type OperationalGuide = {
+  title: string;
+  tone: StatusTone;
+  statusLabel: string;
+  summary: string;
+  releaseDecision: string;
+  rollbackDecision: string;
+  actions: string[];
+  evidence: string[];
 };
 
 export function getStatusCopy(status: CaseStatus): StatusCopy {
@@ -310,6 +325,184 @@ export function getCaseStageTrace(caseRecord: CaseRecord, auditEvents: AuditEven
           : "The case never reached a persisted reviewer decision."
     }
   ];
+}
+
+export function getWorkspaceOperationalGuide(
+  summary: CaseQueueSummary,
+  analytics: CaseQueueAnalytics
+): OperationalGuide {
+  const providerFailures = analytics.operationalMetrics.providerFetch.failedCount;
+  const intakeFailures = analytics.operationalMetrics.intakePipeline.failedCount;
+  const failedIngestions = summary.failedIngestionCount;
+  const oldestPendingHours = analytics.reviewLatency.oldestPendingHours ?? 0;
+  const pendingReviewCount = summary.pendingReviewCount;
+  const slowestStageMs = Math.max(
+    analytics.operationalMetrics.intakePipeline.maxDurationMs ?? 0,
+    analytics.operationalMetrics.providerFetch.maxDurationMs ?? 0,
+    analytics.operationalMetrics.reviewerDecision.maxDurationMs ?? 0
+  );
+
+  if (providerFailures > 0 || intakeFailures > 0 || failedIngestions > 0) {
+    return {
+      title: "Investigate before release",
+      tone: "danger",
+      statusLabel: "Hold",
+      summary:
+        "The current queue contains persisted ingestion or intake failures, so the next release should pause until the failure pattern is understood.",
+      releaseDecision:
+        "Keep the current build out of wider rollout until a representative failed case can be replayed successfully through the same API path.",
+      rollbackDecision:
+        "If these failures started immediately after a provider, timeout, or runtime change, roll back that change first, then replay affected cases with the same idempotency keys.",
+      actions: [
+        "Open a failed case detail and inspect the trace ID, provider error code, and stage durations.",
+        "Replay one affected request with the same Idempotency-Key to confirm recovery does not mint duplicate state.",
+        "Check whether provider timeout or runtime configuration changed just before the failures appeared."
+      ],
+      evidence: [
+        `${failedIngestions} failed-ingestion cases remain visible in the current queue.`,
+        `Provider fetch failures: ${providerFailures}; intake failures: ${intakeFailures}.`,
+        `Slowest recorded stage in the filtered queue: ${formatMetricDuration(slowestStageMs || null)}.`
+      ]
+    };
+  }
+
+  if (
+    oldestPendingHours >= STALLED_PENDING_HOURS ||
+    pendingReviewCount >= BACKLOG_WARNING_COUNT ||
+    slowestStageMs >= SLOW_STAGE_WARNING_MS
+  ) {
+    return {
+      title: "Release with operator watch",
+      tone: "warning",
+      statusLabel: "Watch",
+      summary:
+        "The queue is healthy enough to continue, but backlog age or stage timing shows enough pressure to warrant a monitored rollout.",
+      releaseDecision:
+        "Ship only if the reviewer queue is actively watched and the oldest pending cases are not being ignored through the rollout window.",
+      rollbackDecision:
+        "Rollback is not automatic here; use it only if rollout traffic coincides with rising stage duration or a new failed-ingestion pattern.",
+      actions: [
+        "Prioritize the oldest pending reviews before widening release scope.",
+        "Watch intake and provider stage timings for a sustained increase during the rollout window.",
+        "Capture one trace ID from a slow case so the team can compare before and after behavior."
+      ],
+      evidence: [
+        `Oldest pending review age: ${formatHours(analytics.reviewLatency.oldestPendingHours)} hours.`,
+        `Pending-review backlog: ${pendingReviewCount} cases.`,
+        `Slowest recorded stage in the filtered queue: ${formatMetricDuration(slowestStageMs || null)}.`
+      ]
+    };
+  }
+
+  return {
+    title: "Ready for a controlled release",
+    tone: "success",
+    statusLabel: "Ready",
+    summary:
+      "The filtered queue has no persisted ingestion failures and no obvious timing or review-latency pressure.",
+    releaseDecision:
+      "This slice is in a reasonable state for a controlled release because the current queue can be explained from stored case and audit evidence.",
+    rollbackDecision:
+      "Keep rollback guidance documented, but no current queue signal suggests that the latest runtime or provider behavior should be reversed.",
+    actions: [
+      "Spot-check one recent approved or pending case to confirm the reviewer path still matches the runbook.",
+      "Record the current queue counts and slowest stage before releasing so regressions are easy to compare.",
+      "Proceed with a narrow rollout first and keep trace IDs visible during smoke testing."
+    ],
+    evidence: [
+      `${summary.total} visible cases in the filtered queue with ${summary.failedIngestionCount} failed ingestions.`,
+      `Oldest pending review age: ${formatHours(analytics.reviewLatency.oldestPendingHours)} hours.`,
+      `Slowest recorded stage in the filtered queue: ${formatMetricDuration(slowestStageMs || null)}.`
+    ]
+  };
+}
+
+export function getCaseOperationalGuide(caseRecord: CaseRecord, auditEvents: AuditEvent[]): OperationalGuide {
+  const intakePending = findLastAuditEvent(auditEvents, "HUMAN_REVIEW_PENDING");
+  const providerFailed = findLastAuditEvent(auditEvents, "PROVIDER_FETCH_FAILED");
+  const providerIngested = findLastAuditEvent(auditEvents, "TRANSACTIONS_INGESTED");
+  const reviewerDecision =
+    findLastAuditEvent(auditEvents, "HUMAN_APPROVED") ?? findLastAuditEvent(auditEvents, "HUMAN_REJECTED");
+  const intakeDuration =
+    readEventDuration(intakePending?.details, "durationMs") ??
+    readEventDuration(providerFailed?.details, "intakeDurationMs");
+  const providerDuration =
+    readEventDuration(providerIngested?.details, "durationMs") ??
+    readEventDuration(providerFailed?.details, "durationMs");
+  const reviewerDuration = readEventDuration(reviewerDecision?.details, "durationMs");
+
+  if (caseRecord.status === "ingestion_failed") {
+    const errorCode =
+      typeof providerFailed?.details.errorCode === "string" ? providerFailed.details.errorCode : "unknown";
+
+    return {
+      title: "Retry-safe incident response required",
+      tone: "danger",
+      statusLabel: "Incident",
+      summary:
+        "This case never reached reviewer-ready state because provider ingestion failed, so it is the strongest rollback and replay signal in the current workflow.",
+      releaseDecision:
+        "Do not widen rollout from this case state. First prove that one failed case can recover through the same API path without creating duplicate rows.",
+      rollbackDecision:
+        "If the failure started right after a provider, timeout, or runtime change, roll back that change and retry this case with the same idempotency key.",
+      actions: [
+        "Inspect the provider failure code and trace ID in the audit timeline.",
+        "Retry the intake with the same Idempotency-Key so recovery updates the original case instead of duplicating state.",
+        "Compare the provider timeout and runtime configuration with the last known healthy run."
+      ],
+      evidence: [
+        `Provider status: ${getProviderSummary(caseRecord.sourceMetadata)}.`,
+        `Provider failure code: ${errorCode}.`,
+        `Intake duration ${formatMetricDuration(intakeDuration)}; provider duration ${formatMetricDuration(providerDuration)}.`
+      ]
+    };
+  }
+
+  if (caseRecord.status === "pending_review") {
+    return {
+      title: "Ready for human review completion",
+      tone: caseRecord.risk.level === "high" ? "warning" : "neutral",
+      statusLabel: caseRecord.risk.level === "high" ? "Watch" : "Queue",
+      summary:
+        "Automation completed the intake path, but the release gate is still the human decision and note capture on this case.",
+      releaseDecision:
+        "This case can stay in the current release only if reviewer note capture remains mandatory and the audit history still matches the UI state after refresh.",
+      rollbackDecision:
+        "No rollback is implied by this case alone. Roll back only if pending cases start stalling or timing increases after a change.",
+      actions: [
+        "Review the deterministic indicators and transaction sample before approving or rejecting.",
+        "Record a reviewer note that explains the decision and any caveat worth preserving in the audit log.",
+        "Use the trace ID if the detail page and API response ever disagree after refresh."
+      ],
+      evidence: [
+        `Risk level: ${caseRecord.risk.level} (${caseRecord.risk.score}).`,
+        `Intake duration ${formatMetricDuration(intakeDuration)}; provider duration ${formatMetricDuration(providerDuration)}.`,
+        `Trace ID: ${caseRecord.traceId}.`
+      ]
+    };
+  }
+
+  return {
+    title: "Case completed with traceable evidence",
+    tone: "success",
+    statusLabel: "Completed",
+    summary:
+      "The workflow reached a persisted reviewer decision, so the case now serves as release evidence rather than an open operational risk.",
+    releaseDecision:
+      "This case supports release confidence because the reviewer path, note capture, and persisted timing all completed through the intended API boundary.",
+    rollbackDecision:
+      "No rollback action is suggested by this completed case. Preserve it as a comparison point if a later rollout introduces regressions.",
+    actions: [
+      "Use the reviewer note and stage durations as a known-good example during smoke testing.",
+      "Compare later regressions against this trace before changing provider or runtime configuration again.",
+      "Keep the audit timeline immutable so approval evidence remains explainable."
+    ],
+    evidence: [
+      `Final status: ${caseRecord.status}.`,
+      `Reviewer duration ${formatMetricDuration(reviewerDuration)} after intake ${formatMetricDuration(intakeDuration)} and provider ${formatMetricDuration(providerDuration)}.`,
+      `Reviewer note: ${caseRecord.reviewerNote ?? "Not recorded"}.`
+    ]
+  };
 }
 
 function formatHours(value: number | null): string {

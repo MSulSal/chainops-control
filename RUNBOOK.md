@@ -39,10 +39,13 @@ Expected result:
 3. Confirm the workflow analytics section shows entered-review counts and that the case timeline adds the new intake day.
 4. Confirm the operational metrics section shows non-`n/a` timing for intake pipeline and provider fetch after at least one successful case.
 5. If the case is later approved or rejected, confirm the review-latency cards, reviewer-decision timing card, and timeline reviewed counts update after refresh.
-6. Use the filter bar to search by wallet suffix or trace ID and confirm the URL preserves the active query.
-7. Open the case detail page and confirm the provider summary, trace ID, transaction sample, stage-trace cards, and audit timeline render.
-8. Submit an approval or rejection from the case detail page with a note and confirm the page refreshes with the new status, persisted reviewer note, and reviewer-decision timing.
-9. If the provider times out, confirm the workspace shows `Ingestion failed`, the provider/intake timing remains visible, and retry-safe guidance references reusing the same idempotency key.
+6. Confirm the release response guide changes between `Ready`, `Watch`, and `Hold` as queue failures or stale pending-review cases appear.
+7. Confirm the guide's rollback note only recommends reverting a recent provider/runtime change when the failure pattern lines up with a change window.
+8. Open a failed-ingestion case and confirm the incident guide references the same trace ID, provider error, and replay-safe retry path shown in the audit history.
+9. Use the filter bar to search by wallet suffix or trace ID and confirm the URL preserves the active query.
+10. Open the case detail page and confirm the provider summary, trace ID, transaction sample, stage-trace cards, and audit timeline render.
+11. Submit an approval or rejection from the case detail page with a note and confirm the page refreshes with the new status, persisted reviewer note, and reviewer-decision timing.
+12. If the provider times out, confirm the workspace shows `Ingestion failed`, the provider/intake timing remains visible, and retry-safe guidance references reusing the same idempotency key.
 
 ## Human approval
 
@@ -66,3 +69,4 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - Risk indicators are deterministic and human approval is mandatory.
 - Reviewer decisions now flow through the workspace, but still post to the same API boundary instead of writing directly to PostgreSQL.
 - Workflow analytics and request-stage timing currently come from persisted audit-event details through the reviewer API; there is still no external collector, trace backend, or alerting system.
+- Release and rollback guidance are operational playbooks derived from queue and case evidence; they do not trigger deployment changes automatically.

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   getActiveFilterChips,
+  getCaseOperationalGuide,
   getCaseStageTrace,
   getQueueAnalyticsCards,
   getCaseDetailCallout,
@@ -11,7 +12,8 @@ import {
   getReviewLatencyCards,
   getTimelineBars,
   getQueueSummaryCards,
-  getStatusCopy
+  getStatusCopy,
+  getWorkspaceOperationalGuide
 } from "../src/reviewer-view.ts";
 
 test("builds reviewer list copy for a healthy pending-review case", () => {
@@ -256,4 +258,108 @@ test("builds request-stage trace cards from persisted audit events", () => {
   assert.equal(stages[1].statusLabel, "Completed");
   assert.match(stages[1].detail, /3 transaction samples/);
   assert.equal(stages[2].duration, "74 ms");
+});
+
+test("holds release guidance when queue analytics show persisted failures", () => {
+  const guide = getWorkspaceOperationalGuide(
+    {
+      total: 4,
+      pendingReviewCount: 2,
+      failedIngestionCount: 1,
+      approvedCount: 1,
+      rejectedCount: 0,
+      highRiskCount: 2,
+      mediumRiskCount: 1,
+      lowRiskCount: 1
+    },
+    {
+      statusTransitions: {
+        enteredReviewCount: 2,
+        approvedCount: 1,
+        rejectedCount: 0,
+        failedIngestionCount: 1
+      },
+      reviewLatency: {
+        reviewedCount: 1,
+        averageHours: 1.5,
+        maxHours: 1.5,
+        oldestPendingHours: 2
+      },
+      operationalMetrics: {
+        intakePipeline: {
+          completedCount: 2,
+          failedCount: 1,
+          averageDurationMs: 180,
+          maxDurationMs: 280
+        },
+        providerFetch: {
+          completedCount: 2,
+          failedCount: 1,
+          averageDurationMs: 220,
+          maxDurationMs: 440
+        },
+        reviewerDecision: {
+          completedCount: 1,
+          failedCount: 0,
+          averageDurationMs: 95,
+          maxDurationMs: 95
+        }
+      },
+      timeline: []
+    }
+  );
+
+  assert.equal(guide.statusLabel, "Hold");
+  assert.equal(guide.tone, "danger");
+  assert.match(guide.rollbackDecision, /roll back/i);
+  assert.match(guide.evidence[0], /1 failed-ingestion/);
+});
+
+test("builds retry-safe incident guidance for a failed case", () => {
+  const guide = getCaseOperationalGuide(
+    {
+      id: "case-4",
+      walletAddress: "0x1111111111111111111111111111111111111111",
+      status: "ingestion_failed",
+      risk: {
+        level: "low",
+        score: 0,
+        indicators: ["transaction sample unavailable until provider retry succeeds"]
+      },
+      transactions: [],
+      sourceMetadata: {
+        provider: "etherscan-account-txlist",
+        mode: "live",
+        network: "ethereum-mainnet",
+        fetchedAt: "2026-07-01T10:00:00.000Z",
+        attemptCount: 1,
+        timeoutMs: 1500,
+        transactionCount: 0,
+        errorCode: "timeout",
+        retriable: true
+      },
+      traceId: "trace-failed-1",
+      createdAt: "2026-07-01T10:00:00.000Z"
+    },
+    [
+      {
+        id: "audit-1",
+        caseId: "case-4",
+        type: "PROVIDER_FETCH_FAILED",
+        traceId: "trace-failed-1",
+        at: "2026-07-01T10:00:00.000Z",
+        details: {
+          provider: "etherscan-account-txlist",
+          errorCode: "timeout",
+          durationMs: 1550,
+          intakeDurationMs: 1630
+        }
+      }
+    ]
+  );
+
+  assert.equal(guide.statusLabel, "Incident");
+  assert.equal(guide.tone, "danger");
+  assert.match(guide.actions[1], /same Idempotency-Key/);
+  assert.match(guide.evidence[1], /timeout/);
 });

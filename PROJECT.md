@@ -24,7 +24,8 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 6: implemented reviewer decision actions in the workspace with required note capture, redirect-safe refresh, and write-path validation through the same API boundary.
 - Slice 7: implemented SQL-backed case timeline, review-transition counts, and review-latency analytics in the reviewer workspace.
 - Slice 8: implemented request-stage traces and operational metrics for intake, provider fetch, and reviewer decisions through persisted audit-event timing.
-- Slice 9: product UI polish, sanitized seed data, architecture diagram, and release notes.
+- Slice 9: implemented queue-level release guidance plus case-level incident and rollback playbooks derived from persisted case, timing, and audit evidence.
+- Slice 10: exportable incident snapshots, sanitized seed data, and release notes for shareable operational evidence.
 
 ## Success evidence
 

@@ -15,6 +15,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - SQL-backed workflow analytics for review transitions, review latency, and recent intake/review timeline visibility.
 - Request-stage timing metrics for intake, provider fetch, and reviewer decisions, derived from persisted audit-event details.
 - Case-detail stage traces that show completed, failed, and pending operational steps without bypassing the existing API boundary.
+- Queue-level release guidance and case-level incident/rollback playbooks derived from persisted case, timing, and audit evidence.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -72,7 +73,7 @@ Example approval body:
 
 ## Roadmap
 
-1. Add release/rollback and incident-oriented troubleshooting documentation around the new timing signals.
+1. Add exportable incident snapshots and shareable operational evidence from the reviewer workspace.
 2. Add a minimal Terraform sandbox and deployment notes for disposable environments.
 3. Add a lightweight local telemetry export path once the product needs a collector beyond persisted audit evidence.
 
