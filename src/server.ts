@@ -10,6 +10,7 @@ type JsonBody = Record<string, unknown>;
 
 export function createApp(store: AuditStore) {
   return createHttpServer(async (request, response) => {
+    const requestStartedAtMs = performance.now();
     const url = new URL(request.url ?? "/", "http://localhost");
     const headers = new Headers(request.headers as Record<string, string>);
     const traceId = getTraceId(headers);
@@ -38,7 +39,8 @@ export function createApp(store: AuditStore) {
           walletAddress: String(body.walletAddress ?? ""),
           traceId,
           now: new Date().toISOString(),
-          idempotencyKey: headers.get("idempotency-key")?.trim() || undefined
+          idempotencyKey: headers.get("idempotency-key")?.trim() || undefined,
+          requestStartedAtMs
         });
 
         writeStructuredLog("case.created", {
@@ -79,7 +81,8 @@ export function createApp(store: AuditStore) {
           decision,
           traceId,
           now: new Date().toISOString(),
-          note
+          note,
+          requestStartedAtMs
         });
 
         writeStructuredLog("case.reviewed", {

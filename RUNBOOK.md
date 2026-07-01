@@ -37,11 +37,12 @@ Expected result:
 1. Open `http://127.0.0.1:3000`.
 2. Confirm the new case appears in the recent-case grid and that the summary cards update with the expected pending-review and high-risk counts.
 3. Confirm the workflow analytics section shows entered-review counts and that the case timeline adds the new intake day.
-4. If the case is later approved or rejected, confirm the review-latency cards and timeline reviewed counts update after refresh.
-5. Use the filter bar to search by wallet suffix or trace ID and confirm the URL preserves the active query.
-6. Open the case detail page and confirm the provider summary, trace ID, transaction sample, and audit timeline render.
-7. Submit an approval or rejection from the case detail page with a note and confirm the page refreshes with the new status and persisted reviewer note.
-8. If the provider times out, confirm the workspace shows `Ingestion failed` plus retry-safe guidance about reusing the same idempotency key.
+4. Confirm the operational metrics section shows non-`n/a` timing for intake pipeline and provider fetch after at least one successful case.
+5. If the case is later approved or rejected, confirm the review-latency cards, reviewer-decision timing card, and timeline reviewed counts update after refresh.
+6. Use the filter bar to search by wallet suffix or trace ID and confirm the URL preserves the active query.
+7. Open the case detail page and confirm the provider summary, trace ID, transaction sample, stage-trace cards, and audit timeline render.
+8. Submit an approval or rejection from the case detail page with a note and confirm the page refreshes with the new status, persisted reviewer note, and reviewer-decision timing.
+9. If the provider times out, confirm the workspace shows `Ingestion failed`, the provider/intake timing remains visible, and retry-safe guidance references reusing the same idempotency key.
 
 ## Human approval
 
@@ -64,4 +65,4 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - PostgreSQL is local Docker Compose infrastructure only; there is no cloud deployment or managed database.
 - Risk indicators are deterministic and human approval is mandatory.
 - Reviewer decisions now flow through the workspace, but still post to the same API boundary instead of writing directly to PostgreSQL.
-- Workflow analytics currently summarize persisted local SQL state through the reviewer API; deeper traces and metrics are the next operational slice.
+- Workflow analytics and request-stage timing currently come from persisted audit-event details through the reviewer API; there is still no external collector, trace backend, or alerting system.

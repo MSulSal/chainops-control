@@ -8,7 +8,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 4: server-rendered reviewer workspace, typed API fetch layer, status-driven UI copy, and failed-ingestion visibility without duplicating backend state.
 - Applied in slice 5: URL-backed reviewer filters, API-driven summary cards, and typed query parsing for wallet/trace search without coupling the UI directly to PostgreSQL.
 - Applied in slice 6: server-action form handling, redirect-safe cache refresh, and required reviewer-note capture over the same API boundary.
-- Apply next: SQL-backed reviewer timeline analytics and richer operational breakdowns.
+- Applied in slice 8: workspace cards for persisted request-stage timings plus case-detail stage traces derived from audit history instead of ad hoc client timers.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -16,6 +16,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Refresh: runtime and event loop, typed request/response contracts, schema validation, error handling, abort/timeouts, queues, idempotency, and integration testing.
 - Applied in slice 1: REST API, wallet validation, deterministic ingestion fixture, health/readiness, failure responses, structured logs, trace IDs, and Node integration tests.
 - Applied in slice 2: optional `Idempotency-Key` header, replay-safe duplicate intake, transaction-bound SQL writes, and database-backed integration tests.
+- Applied in slice 8: bounded request timing captured at the API/store boundary for intake and reviewer decisions, then persisted as audit-event details so operational evidence survives refreshes and replays.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL
@@ -25,6 +26,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 3: JSONB source metadata on cases, persisted provider-failure audit events, and same-case recovery when a previously failed idempotent intake succeeds on retry.
 - Applied in slice 5: aggregate queue counts plus status/risk/search filtering from SQL so operational UI state stays backed by the stored case ledger.
 - Applied in slice 7: SQL-backed review-transition counts, review-latency aggregation, and timeline bucketing from persisted case timestamps so the workspace can explain queue pressure and operational history.
+- Applied in slice 8: filtered audit-event scans that summarize intake, provider-fetch, and reviewer-decision timings without adding a second telemetry store before the product needs one.
 - Docs: https://www.postgresql.org/docs/current/
 
 ## Ethereum data API
@@ -42,8 +44,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 ## Observability and CI/CD
 
 - Refresh: logs vs metrics vs traces, correlation IDs, RED metrics, OpenTelemetry context propagation, CI jobs/artifacts/caches/environments.
-- Apply: trace wallet intake through ingestion and reviewer approval; alertable failure metrics; GitHub Actions quality gates.
-- Apply next: request-stage traces and operational metrics for intake, provider fetch, and reviewer decisions so queue analytics connect to deeper debugging signals.
+- Applied in slice 8: trace wallet intake, provider fetch, and reviewer approval through persisted audit-event durations and reviewer workspace cards.
+- Apply next: release/rollback guidance and a lightweight export path if the product outgrows audit-derived timing.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
@@ -60,3 +62,4 @@ Be able to explain:
 7. Why does the reviewer workspace fetch from the API instead of querying PostgreSQL directly?
 8. Why keep queue summaries in the API contract instead of computing them only in React?
 9. Why keep workflow analytics on `GET /cases` instead of splitting them into a second reporting endpoint this early?
+10. Why derive timing metrics from the audit ledger first instead of adding OpenTelemetry infrastructure immediately?

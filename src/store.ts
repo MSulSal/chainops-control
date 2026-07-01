@@ -13,6 +13,8 @@ import {
   createCaseRecord,
   createFailedCaseRecord,
   normalizeWalletAddress,
+  type OperationMetricSummary,
+  type OperationalMetrics,
   type ReviewLatencySummary,
   type SourceMetadata,
   type TransactionSample
@@ -92,6 +94,11 @@ type TimelineCaseRow = {
   status: CaseRecord["status"];
 };
 
+type AuditEventMetricRow = {
+  event_type: AuditEvent["type"];
+  details: Record<string, unknown>;
+};
+
 export type AuditStore = {
   init(): Promise<void>;
   close(): Promise<void>;
@@ -107,6 +114,7 @@ export type AuditStore = {
     traceId: string;
     now: string;
     idempotencyKey?: string;
+    requestStartedAtMs?: number;
   }): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean; recovered: boolean }>;
   approveCase(input: {
     caseId: string;
@@ -114,6 +122,7 @@ export type AuditStore = {
     traceId: string;
     now: string;
     note?: string;
+    requestStartedAtMs?: number;
   }): Promise<{ caseRecord: CaseRecord; auditEvent: AuditEvent }>;
   findCase(caseId: string): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[] } | null>;
 };
@@ -231,9 +240,11 @@ export class PostgresAuditStore implements AuditStore {
     traceId: string;
     now: string;
     idempotencyKey?: string;
+    requestStartedAtMs?: number;
   }): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean; recovered: boolean }> {
     await this.initPromise;
     const walletAddress = normalizeWalletAddress(input.walletAddress);
+    const requestStartedAtMs = input.requestStartedAtMs ?? performance.now();
     const existing = input.idempotencyKey
       ? await this.findCaseByIdempotencyKey(input.idempotencyKey)
       : null;
@@ -242,11 +253,14 @@ export class PostgresAuditStore implements AuditStore {
       return { ...existing, replayed: true, recovered: false };
     }
 
+    const providerStartedAtMs = performance.now();
     try {
       const providerResult = await this.provider.fetchTransactionSample({
         walletAddress,
         traceId: input.traceId
       });
+      const providerFetchDurationMs = roundDurationMs(performance.now() - providerStartedAtMs);
+      const intakeDurationMs = roundDurationMs(performance.now() - requestStartedAtMs);
       const created = createCaseRecord({
         caseId: existing?.caseRecord.id,
         createdAt: existing?.caseRecord.createdAt,
@@ -254,7 +268,9 @@ export class PostgresAuditStore implements AuditStore {
         transactions: providerResult.transactions,
         sourceMetadata: providerResult.sourceMetadata,
         traceId: input.traceId,
-        now: input.now
+        now: input.now,
+        providerFetchDurationMs,
+        intakeDurationMs
       });
 
       if (existing) {
@@ -263,6 +279,8 @@ export class PostgresAuditStore implements AuditStore {
 
       return await this.insertCase(created, input.idempotencyKey);
     } catch (error) {
+      const providerFetchDurationMs = roundDurationMs(performance.now() - providerStartedAtMs);
+      const intakeDurationMs = roundDurationMs(performance.now() - requestStartedAtMs);
       const providerError = normalizeProviderFetchError(error);
       const sourceMetadata = buildFailureSourceMetadata(providerError, input.now);
       const failed = createFailedCaseRecord({
@@ -271,7 +289,9 @@ export class PostgresAuditStore implements AuditStore {
         walletAddress,
         sourceMetadata,
         traceId: input.traceId,
-        now: input.now
+        now: input.now,
+        providerFetchDurationMs,
+        intakeDurationMs
       });
 
       if (existing) {
@@ -288,9 +308,11 @@ export class PostgresAuditStore implements AuditStore {
     traceId: string;
     now: string;
     note?: string;
+    requestStartedAtMs?: number;
   }): Promise<{ caseRecord: CaseRecord; auditEvent: AuditEvent }> {
     await this.initPromise;
     const client = await this.pool.connect();
+    const requestStartedAtMs = input.requestStartedAtMs ?? performance.now();
 
     try {
       await client.query("BEGIN");
@@ -321,7 +343,10 @@ export class PostgresAuditStore implements AuditStore {
         input.decision === "approve" ? "HUMAN_APPROVED" : "HUMAN_REJECTED",
         input.traceId,
         input.now,
-        { note: input.note ?? null }
+        {
+          note: input.note ?? null,
+          durationMs: roundDurationMs(performance.now() - requestStartedAtMs)
+        }
       );
 
       await this.insertAuditEvents(client, [auditEvent]);
@@ -510,11 +535,23 @@ export class PostgresAuditStore implements AuditStore {
        LIMIT 200`,
       where.values
     );
+    const auditMetricRows = await client.query<AuditEventMetricRow>(
+      `WITH filtered_cases AS (
+         SELECT id
+         FROM ${this.schema}.cases
+         ${where.sql}
+       )
+       SELECT event_type, details
+       FROM ${this.schema}.audit_events
+       WHERE case_id IN (SELECT id FROM filtered_cases)`,
+      where.values
+    );
 
     return {
       statusTransitions: mapTransitionCountRow(transitionResult.rows[0]),
       reviewLatency: mapReviewLatencyRow(latencyResult.rows[0]),
-      timeline: buildTimelineFromCaseRows(timelineRows.rows)
+      timeline: buildTimelineFromCaseRows(timelineRows.rows),
+      operationalMetrics: buildOperationalMetrics(auditMetricRows.rows)
     };
   }
 
@@ -839,6 +876,33 @@ function mapReviewLatencyRow(row?: ReviewLatencyRow): ReviewLatencySummary {
   };
 }
 
+function buildOperationalMetrics(rows: AuditEventMetricRow[]): OperationalMetrics {
+  return {
+    intakePipeline: summarizeDurations(
+      rows
+        .filter((row) => row.event_type === "HUMAN_REVIEW_PENDING")
+        .map((row) => readDurationMs(row.details, "durationMs")),
+      rows
+        .filter((row) => row.event_type === "PROVIDER_FETCH_FAILED")
+        .map((row) => readDurationMs(row.details, "intakeDurationMs"))
+    ),
+    providerFetch: summarizeDurations(
+      rows
+        .filter((row) => row.event_type === "TRANSACTIONS_INGESTED")
+        .map((row) => readDurationMs(row.details, "durationMs")),
+      rows
+        .filter((row) => row.event_type === "PROVIDER_FETCH_FAILED")
+        .map((row) => readDurationMs(row.details, "durationMs"))
+    ),
+    reviewerDecision: summarizeDurations(
+      rows
+        .filter((row) => row.event_type === "HUMAN_APPROVED" || row.event_type === "HUMAN_REJECTED")
+        .map((row) => readDurationMs(row.details, "durationMs")),
+      []
+    )
+  };
+}
+
 function buildTimelineFromCaseRows(rows: TimelineCaseRow[]): CaseTimelinePoint[] {
   const byDay = new Map<string, CaseTimelinePoint>();
 
@@ -879,6 +943,35 @@ function parseNullableNumber(value: string | null | undefined): number | null {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function readDurationMs(details: Record<string, unknown>, key: string): number | null {
+  const value = details[key];
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  return null;
+}
+
+function summarizeDurations(
+  completedDurations: Array<number | null>,
+  failedDurations: Array<number | null>
+): OperationMetricSummary {
+  const completed = completedDurations.filter((value): value is number => value != null);
+  const failed = failedDurations.filter((value): value is number => value != null);
+  const all = [...completed, ...failed];
+
+  return {
+    completedCount: completed.length,
+    failedCount: failed.length,
+    averageDurationMs: all.length ? Math.round(all.reduce((sum, value) => sum + value, 0) / all.length) : null,
+    maxDurationMs: all.length ? Math.max(...all) : null
+  };
+}
+
+function roundDurationMs(value: number): number {
+  return Math.max(0, Math.round(value));
 }
 
 function createEmptyTimelinePoint(day: string): CaseTimelinePoint {

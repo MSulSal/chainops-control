@@ -58,6 +58,10 @@ Reviewer approvals and rejections now originate from the Next.js case-detail pag
 
 Workflow analytics stay attached to the existing `GET /cases` contract so the reviewer workspace can show review transitions, latency, and recent timeline activity without creating a second reporting endpoint or teaching the wrong boundary. Counts and latency remain aggregated from persisted PostgreSQL case and audit state, while the service fills the daily timeline buckets after reading filtered SQL rows so the contract stays stable across local Postgres and in-memory test execution.
 
+## 2026-07-01 request-stage observability decision
+
+Request-stage traces and timing metrics stay inside the existing case and audit ledger instead of introducing a separate collector before the workflow needs one. Intake pipeline timing is persisted on `HUMAN_REVIEW_PENDING` or `PROVIDER_FETCH_FAILED`, provider-fetch timing is persisted on ingestion success/failure events, and reviewer-decision timing is persisted on approval/rejection events. The reviewer workspace then derives aggregate operational metrics from filtered audit rows and shows per-case stage traces from the same stored evidence.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

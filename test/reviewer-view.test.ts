@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   getActiveFilterChips,
+  getCaseStageTrace,
   getQueueAnalyticsCards,
   getCaseDetailCallout,
   getCaseListSubtitle,
+  getOperationalMetricCards,
   getProviderSummary,
   getReviewLatencyCards,
   getTimelineBars,
@@ -133,6 +135,26 @@ test("builds analytics cards and timeline bars for persisted reviewer metrics", 
       maxHours: 5.25,
       oldestPendingHours: 27.4
     },
+    operationalMetrics: {
+      intakePipeline: {
+        completedCount: 4,
+        failedCount: 1,
+        averageDurationMs: 180,
+        maxDurationMs: 320
+      },
+      providerFetch: {
+        completedCount: 4,
+        failedCount: 1,
+        averageDurationMs: 160,
+        maxDurationMs: 300
+      },
+      reviewerDecision: {
+        completedCount: 3,
+        failedCount: 0,
+        averageDurationMs: 95,
+        maxDurationMs: 120
+      }
+    },
     timeline: [
       {
         day: "2026-06-29",
@@ -154,11 +176,84 @@ test("builds analytics cards and timeline bars for persisted reviewer metrics", 
   };
   const analyticsCards = getQueueAnalyticsCards(analytics);
   const latencyCards = getReviewLatencyCards(analytics);
+  const operationalCards = getOperationalMetricCards(analytics);
   const timelineBars = getTimelineBars(analytics.timeline);
 
   assert.equal(analyticsCards[0].value, "5");
   assert.equal(latencyCards[1].value, "2.5");
   assert.equal(latencyCards[3].tone, "danger");
+  assert.equal(operationalCards[0].value, "180 ms");
+  assert.match(operationalCards[1].description, /1 failed/);
   assert.equal(timelineBars[0].dayLabel, "Jun 29");
   assert.equal(timelineBars[1].reviewedCount, 3);
+});
+
+test("builds request-stage trace cards from persisted audit events", () => {
+  const stages = getCaseStageTrace(
+    {
+      id: "case-3",
+      walletAddress: "0x1111111111111111111111111111111111111111",
+      status: "approved",
+      risk: {
+        level: "high",
+        score: 80,
+        indicators: ["fixture watchlist hit"]
+      },
+      transactions: [],
+      sourceMetadata: {
+        provider: "etherscan-account-txlist",
+        mode: "live",
+        network: "ethereum-mainnet",
+        fetchedAt: "2026-06-30T18:00:00.000Z",
+        attemptCount: 1,
+        timeoutMs: 1500,
+        transactionCount: 3
+      },
+      traceId: "trace-operational-1",
+      createdAt: "2026-06-30T18:00:00.000Z",
+      reviewedAt: "2026-06-30T18:05:00.000Z",
+      reviewerNote: "Approved after reviewing fixture evidence."
+    },
+    [
+      {
+        id: "audit-1",
+        caseId: "case-3",
+        type: "TRANSACTIONS_INGESTED",
+        traceId: "trace-operational-1",
+        at: "2026-06-30T18:00:00.000Z",
+        details: {
+          source: "etherscan-account-txlist",
+          count: 3,
+          durationMs: 144
+        }
+      },
+      {
+        id: "audit-2",
+        caseId: "case-3",
+        type: "HUMAN_REVIEW_PENDING",
+        traceId: "trace-operational-1",
+        at: "2026-06-30T18:00:00.000Z",
+        details: {
+          requiredBeforeAction: true,
+          durationMs: 188
+        }
+      },
+      {
+        id: "audit-3",
+        caseId: "case-3",
+        type: "HUMAN_APPROVED",
+        traceId: "trace-operational-1",
+        at: "2026-06-30T18:05:00.000Z",
+        details: {
+          note: "Approved after reviewing fixture evidence.",
+          durationMs: 74
+        }
+      }
+    ]
+  );
+
+  assert.equal(stages[0].duration, "188 ms");
+  assert.equal(stages[1].statusLabel, "Completed");
+  assert.match(stages[1].detail, /3 transaction samples/);
+  assert.equal(stages[2].duration, "74 ms");
 });

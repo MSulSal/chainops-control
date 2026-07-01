@@ -4,6 +4,7 @@ import { fetchCaseSummaries, type ReviewerWorkspaceFilters } from "../src/review
 import {
   formatTimestamp,
   getActiveFilterChips,
+  getOperationalMetricCards,
   getQueueAnalyticsCards,
   getCaseListSubtitle,
   getProviderSummary,
@@ -29,6 +30,7 @@ export default async function ReviewerWorkspacePage({
   const summaryCards = getQueueSummaryCards(summary);
   const analyticsCards = getQueueAnalyticsCards(analytics);
   const latencyCards = getReviewLatencyCards(analytics);
+  const operationalCards = getOperationalMetricCards(analytics);
   const timelineBars = getTimelineBars(analytics.timeline);
 
   return (
@@ -124,6 +126,29 @@ export default async function ReviewerWorkspacePage({
             </div>
           </div>
         </article>
+      </section>
+
+      <section className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel-stack">
+          <div>
+            <p className="eyebrow">Operational metrics</p>
+            <h2>Request-stage timing from persisted audit evidence</h2>
+            <p className="muted">
+              These timings come from the same stored audit events that power case history, so they stay explainable without adding separate telemetry infrastructure.
+            </p>
+          </div>
+          <div className="analytics-grid">
+            {operationalCards.map((card) => (
+              <article key={card.label} className="metric-card">
+                <div className="chip-row">
+                  <span className={`chip chip-${card.tone}`}>{card.label}</span>
+                </div>
+                <h3>{card.value}</h3>
+                <p className="muted">{card.description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="panel" style={{ marginBottom: 24 }}>

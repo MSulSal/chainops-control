@@ -89,10 +89,24 @@ export type CaseTimelinePoint = {
   failedIngestionCount: number;
 };
 
+export type OperationMetricSummary = {
+  completedCount: number;
+  failedCount: number;
+  averageDurationMs: number | null;
+  maxDurationMs: number | null;
+};
+
+export type OperationalMetrics = {
+  intakePipeline: OperationMetricSummary;
+  providerFetch: OperationMetricSummary;
+  reviewerDecision: OperationMetricSummary;
+};
+
 export type CaseQueueAnalytics = {
   statusTransitions: CaseStatusTransitionCounts;
   reviewLatency: ReviewLatencySummary;
   timeline: CaseTimelinePoint[];
+  operationalMetrics: OperationalMetrics;
 };
 
 export type AuditEvent = {
@@ -187,6 +201,8 @@ export function createCaseRecord(input: {
   sourceMetadata: SourceMetadata;
   traceId: string;
   now: string;
+  providerFetchDurationMs: number;
+  intakeDurationMs: number;
 }): { caseRecord: CaseRecord; auditEvents: AuditEvent[] } {
   const walletAddress = normalizeWalletAddress(input.walletAddress);
   const transactions = input.transactions;
@@ -212,7 +228,8 @@ export function createCaseRecord(input: {
       mode: input.sourceMetadata.mode,
       attemptCount: input.sourceMetadata.attemptCount,
       timeoutMs: input.sourceMetadata.timeoutMs,
-      count: transactions.length
+      count: transactions.length,
+      durationMs: input.providerFetchDurationMs
     }),
     buildAuditEvent(caseId, "RISK_EVALUATED", input.traceId, input.now, {
       level: risk.level,
@@ -220,7 +237,8 @@ export function createCaseRecord(input: {
       indicators: risk.indicators
     }),
     buildAuditEvent(caseId, "HUMAN_REVIEW_PENDING", input.traceId, input.now, {
-      requiredBeforeAction: true
+      requiredBeforeAction: true,
+      durationMs: input.intakeDurationMs
     })
   ];
 
@@ -234,6 +252,8 @@ export function createFailedCaseRecord(input: {
   sourceMetadata: SourceMetadata;
   traceId: string;
   now: string;
+  providerFetchDurationMs: number;
+  intakeDurationMs: number;
 }): { caseRecord: CaseRecord; auditEvents: AuditEvent[] } {
   const walletAddress = normalizeWalletAddress(input.walletAddress);
   const caseId = input.caseId ?? randomUUID();
@@ -262,7 +282,9 @@ export function createFailedCaseRecord(input: {
       attemptCount: input.sourceMetadata.attemptCount,
       timeoutMs: input.sourceMetadata.timeoutMs,
       errorCode: input.sourceMetadata.errorCode ?? "unknown",
-      retriable: input.sourceMetadata.retriable ?? true
+      retriable: input.sourceMetadata.retriable ?? true,
+      durationMs: input.providerFetchDurationMs,
+      intakeDurationMs: input.intakeDurationMs
     })
   ];
 

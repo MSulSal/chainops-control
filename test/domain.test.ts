@@ -51,9 +51,13 @@ test("builds a retryable ingestion-failed record when provider data is unavailab
       retriable: true
     },
     traceId: "trace-failed-1",
-    now: "2026-06-29T15:00:00.000Z"
+    now: "2026-06-29T15:00:00.000Z",
+    providerFetchDurationMs: 28,
+    intakeDurationMs: 31
   });
 
   assert.equal(failed.caseRecord.status, "ingestion_failed");
   assert.equal(failed.auditEvents.at(-1)?.type, "PROVIDER_FETCH_FAILED");
+  assert.equal(failed.auditEvents.at(-1)?.details.durationMs, 28);
+  assert.equal(failed.auditEvents.at(-1)?.details.intakeDurationMs, 31);
 });

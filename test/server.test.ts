@@ -49,6 +49,8 @@ test("creates a case, writes audit events, and records human approval", async (t
       "HUMAN_REVIEW_PENDING"
     ]
   );
+  assert.equal(Number.isFinite(created.auditEvents[2].details.durationMs), true);
+  assert.equal(Number.isFinite(created.auditEvents[4].details.durationMs), true);
 
   const approvalResponse = await fetch(`${baseUrl}/cases/${created.caseRecord.id}/approval`, {
     method: "POST",
@@ -60,6 +62,7 @@ test("creates a case, writes audit events, and records human approval", async (t
   const approved = await approvalResponse.json();
   assert.equal(approved.caseRecord.status, "approved");
   assert.equal(approved.auditEvent.type, "HUMAN_APPROVED");
+  assert.equal(Number.isFinite(approved.auditEvent.details.durationMs), true);
 
   const readResponse = await fetch(`${baseUrl}/cases/${created.caseRecord.id}`);
   assert.equal(readResponse.status, 200);
@@ -221,6 +224,8 @@ test("persists provider timeout failures for review-safe retry handling", async 
   assert.equal(body.caseRecord.status, "ingestion_failed");
   assert.equal(body.auditEvents.at(-1)?.type, "PROVIDER_FETCH_FAILED");
   assert.equal(body.caseRecord.sourceMetadata.errorCode, "timeout");
+  assert.equal(Number.isFinite(body.auditEvents.at(-1)?.details.durationMs), true);
+  assert.equal(Number.isFinite(body.auditEvents.at(-1)?.details.intakeDurationMs), true);
 
   const readiness = await fetch(`${baseUrl}/ready`);
   const readinessBody = await readiness.json();
@@ -385,6 +390,10 @@ test("lists recent cases with failed-ingestion visibility, queue summaries, and 
   assert.equal(body.analytics.statusTransitions.enteredReviewCount, 1);
   assert.equal(body.analytics.statusTransitions.failedIngestionCount, 1);
   assert.equal(body.analytics.reviewLatency.reviewedCount, 0);
+  assert.equal(body.analytics.operationalMetrics.intakePipeline.completedCount, 1);
+  assert.equal(body.analytics.operationalMetrics.intakePipeline.failedCount, 1);
+  assert.equal(body.analytics.operationalMetrics.providerFetch.completedCount, 1);
+  assert.equal(body.analytics.operationalMetrics.providerFetch.failedCount, 1);
   assert.equal(Array.isArray(body.analytics.timeline), true);
   assert.equal(body.cases[0].walletAddress, "0x9999999999999999999999999999999999999999");
   assert.equal(body.cases[1].status, "ingestion_failed");
@@ -439,6 +448,8 @@ test("returns review latency and timeline analytics after reviewer decisions are
 
   assert.equal(listed.analytics.statusTransitions.approvedCount, 1);
   assert.equal(listed.analytics.reviewLatency.reviewedCount, 1);
+  assert.equal(listed.analytics.operationalMetrics.reviewerDecision.completedCount, 1);
+  assert.equal(listed.analytics.operationalMetrics.reviewerDecision.averageDurationMs >= 0, true);
   assert.equal(listed.analytics.reviewLatency.averageHours >= 0, true);
   assert.equal(listed.analytics.timeline.length >= 1, true);
   assert.equal(listed.analytics.timeline.at(-1).approvedCount >= 1, true);

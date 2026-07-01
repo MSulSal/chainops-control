@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { fetchCaseDetail, submitCaseDecision } from "../../../src/reviewer-data";
 import {
+  getCaseStageTrace,
   formatTimestamp,
   getCaseDetailCallout,
   getProviderSummary,
@@ -32,6 +33,7 @@ export default async function CaseDetailPage({
 
   const status = getStatusCopy(detail.caseRecord.status);
   const callout = getCaseDetailCallout(detail.caseRecord, detail.auditEvents);
+  const stageTrace = getCaseStageTrace(detail.caseRecord, detail.auditEvents);
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -170,6 +172,27 @@ export default async function CaseDetailPage({
       ) : null}
 
       <section className="detail-grid" style={{ marginTop: 24 }}>
+        <div className="panel">
+          <div className="panel-stack">
+            <div>
+              <p className="eyebrow">Stage trace</p>
+              <h2>Request-stage operational view</h2>
+            </div>
+            <div className="analytics-grid">
+              {stageTrace.map((stage) => (
+                <article key={stage.key} className="metric-card">
+                  <div className="chip-row">
+                    <span className={`chip chip-${stage.tone}`}>{stage.label}</span>
+                    <span className="chip chip-neutral">{stage.statusLabel}</span>
+                  </div>
+                  <h3>{stage.duration}</h3>
+                  <p className="muted">{stage.detail}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div className="panel">
           <div className="panel-stack">
             <div>

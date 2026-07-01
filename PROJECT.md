@@ -23,7 +23,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 5: implemented reviewer queue summaries, status counts, wallet/trace query support, and URL-backed filters through the existing API so the workspace can show SQL-backed backlog pressure instead of only a recent-case grid.
 - Slice 6: implemented reviewer decision actions in the workspace with required note capture, redirect-safe refresh, and write-path validation through the same API boundary.
 - Slice 7: implemented SQL-backed case timeline, review-transition counts, and review-latency analytics in the reviewer workspace.
-- Slice 8: request-stage traces and operational metrics for intake, provider fetch, and reviewer decisions.
+- Slice 8: implemented request-stage traces and operational metrics for intake, provider fetch, and reviewer decisions through persisted audit-event timing.
 - Slice 9: product UI polish, sanitized seed data, architecture diagram, and release notes.
 
 ## Success evidence
