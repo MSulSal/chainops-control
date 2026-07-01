@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { fetchCaseDetail, submitCaseDecision } from "../../../src/reviewer-data";
+import {
+  fetchCaseDetail,
+  getCaseSnapshotUrl,
+  submitCaseDecision
+} from "../../../src/reviewer-data";
 import {
   getCaseOperationalGuide,
   getCaseStageTrace,
@@ -36,6 +40,7 @@ export default async function CaseDetailPage({
   const callout = getCaseDetailCallout(detail.caseRecord, detail.auditEvents);
   const stageTrace = getCaseStageTrace(detail.caseRecord, detail.auditEvents);
   const operationalGuide = getCaseOperationalGuide(detail.caseRecord, detail.auditEvents);
+  const caseSnapshotUrl = getCaseSnapshotUrl(detail.caseRecord.id);
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -205,6 +210,9 @@ export default async function CaseDetailPage({
             <div className="chip-row">
               <span className={`chip chip-${operationalGuide.tone}`}>{operationalGuide.statusLabel}</span>
               <span className="chip chip-neutral">trace-backed response</span>
+            </div>
+            <div className="filter-actions">
+              <a href={caseSnapshotUrl}>Export case snapshot</a>
             </div>
             <div className="facts-grid">
               <div className="fact">

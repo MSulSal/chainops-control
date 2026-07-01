@@ -10,6 +10,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 6: server-action form handling, redirect-safe cache refresh, and required reviewer-note capture over the same API boundary.
 - Applied in slice 8: workspace cards for persisted request-stage timings plus case-detail stage traces derived from audit history instead of ad hoc client timers.
 - Applied in slice 9: queue-level release guidance and case-level incident/rollback playbooks computed from typed API data so operational response stays explainable inside the existing React boundary.
+- Applied in slice 10: export links in the Next.js workspace now hand off bounded JSON artifacts built from the same typed API state the UI renders, which keeps operational evidence shareable without adding a second client-only export model.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -19,6 +20,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 2: optional `Idempotency-Key` header, replay-safe duplicate intake, transaction-bound SQL writes, and database-backed integration tests.
 - Applied in slice 8: bounded request timing captured at the API/store boundary for intake and reviewer decisions, then persisted as audit-event details so operational evidence survives refreshes and replays.
 - Applied in slice 9: release and rollback guidance stays as deterministic service/UI logic rather than becoming a manual-only note outside the product.
+- Applied in slice 10: dedicated export endpoints package queue filters, case evidence, stage traces, and audit history into review-safe incident snapshots without breaking the existing service boundary.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL
@@ -30,6 +32,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 7: SQL-backed review-transition counts, review-latency aggregation, and timeline bucketing from persisted case timestamps so the workspace can explain queue pressure and operational history.
 - Applied in slice 8: filtered audit-event scans that summarize intake, provider-fetch, and reviewer-decision timings without adding a second telemetry store before the product needs one.
 - Applied in slice 9: persisted queue counts, latency values, and timing summaries now also drive release readiness, watch-state, and hold-state guidance.
+- Applied in slice 10: the same stored queue and case evidence now feeds downloadable incident artifacts, which is a useful pattern for support handoff and debugging exercises.
 - Docs: https://www.postgresql.org/docs/current/
 
 ## Ethereum data API
@@ -49,7 +52,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Refresh: logs vs metrics vs traces, correlation IDs, RED metrics, OpenTelemetry context propagation, CI jobs/artifacts/caches/environments.
 - Applied in slice 8: trace wallet intake, provider fetch, and reviewer approval through persisted audit-event durations and reviewer workspace cards.
 - Applied in slice 9: release/rollback guidance is now computed from persisted queue and case evidence instead of living only in prose runbooks.
-- Apply next: exportable incident snapshots and a lightweight telemetry export path if the product outgrows audit-derived timing.
+- Apply next: a reproducible seeded demo/reset workflow and then a lightweight telemetry export path if the product outgrows audit-derived timing.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
@@ -68,3 +71,4 @@ Be able to explain:
 9. Why keep workflow analytics on `GET /cases` instead of splitting them into a second reporting endpoint this early?
 10. Why derive timing metrics from the audit ledger first instead of adding OpenTelemetry infrastructure immediately?
 11. Why keep release and rollback guidance as computed product behavior inside the existing API/UI contract instead of introducing a separate incident tool?
+12. Why export incident evidence from the same queue and case APIs instead of rebuilding the artifact in the browser?

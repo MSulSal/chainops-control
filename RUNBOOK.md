@@ -46,6 +46,8 @@ Expected result:
 10. Open the case detail page and confirm the provider summary, trace ID, transaction sample, stage-trace cards, and audit timeline render.
 11. Submit an approval or rejection from the case detail page with a note and confirm the page refreshes with the new status, persisted reviewer note, and reviewer-decision timing.
 12. If the provider times out, confirm the workspace shows `Ingestion failed`, the provider/intake timing remains visible, and retry-safe guidance references reusing the same idempotency key.
+13. Use `Export workspace snapshot` and confirm the browser downloads JSON with the active filters, queue summary, release guide, and visible-case evidence.
+14. Use `Export case snapshot` from a detail page and confirm the JSON includes the case record, stage trace, incident guide, and immutable audit events.
 
 ## Human approval
 

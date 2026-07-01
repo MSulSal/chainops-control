@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { CaseStatus, RiskLevel } from "../src/domain.ts";
-import { fetchCaseSummaries, type ReviewerWorkspaceFilters } from "../src/reviewer-data";
+import {
+  fetchCaseSummaries,
+  getWorkspaceSnapshotUrl,
+  type ReviewerWorkspaceFilters
+} from "../src/reviewer-data";
 import {
   formatTimestamp,
   getActiveFilterChips,
@@ -34,6 +38,7 @@ export default async function ReviewerWorkspacePage({
   const operationalCards = getOperationalMetricCards(analytics);
   const operationalGuide = getWorkspaceOperationalGuide(summary, analytics);
   const timelineBars = getTimelineBars(analytics.timeline);
+  const workspaceSnapshotUrl = getWorkspaceSnapshotUrl(initialFilters);
 
   return (
     <main className="shell">
@@ -165,6 +170,9 @@ export default async function ReviewerWorkspacePage({
           <div className="chip-row">
             <span className={`chip chip-${operationalGuide.tone}`}>{operationalGuide.statusLabel}</span>
             <span className="chip chip-neutral">summary from current filters</span>
+          </div>
+          <div className="filter-actions">
+            <a href={workspaceSnapshotUrl}>Export workspace snapshot</a>
           </div>
           <div className="facts-grid">
             <div className="fact">

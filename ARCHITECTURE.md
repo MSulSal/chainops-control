@@ -66,6 +66,10 @@ Request-stage traces and timing metrics stay inside the existing case and audit 
 
 Release and rollback guidance now stays inside the reviewer workspace as computed product behavior rather than living only in prose docs. Queue-level guidance is derived from persisted failed-ingestion counts, pending-review age, and request-stage timing, while case-level guidance is derived from the same trace and audit events already shown in the detail view. That keeps operational response explainable through the existing API and SQL ledger before adding a separate incident system or telemetry backend.
 
+## 2026-07-01 incident-snapshot export decision
+
+Shareable operational evidence now exports from the same API boundary that already serves the reviewer workspace. `GET /exports/workspace` reuses the current queue filters, SQL-backed analytics, and computed release guide to emit a bounded handoff artifact, while `GET /exports/cases/:id` packages case detail, stage traces, incident guidance, and immutable audit history into a single JSON snapshot. This keeps exports traceable to persisted product state instead of inventing a second reporting store or browser-only export transform.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

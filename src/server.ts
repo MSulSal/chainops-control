@@ -5,6 +5,7 @@ import { type AuditStore, PostgresAuditStore } from "./store.ts";
 import { getTraceId, writeStructuredLog } from "./logger.ts";
 import { normalizeApprovalDecision, normalizeReviewerNote } from "./domain.ts";
 import { createDefaultTransactionProviderFromEnv } from "./provider.ts";
+import { buildCaseIncidentSnapshot, buildWorkspaceIncidentSnapshot } from "./incident-snapshot.ts";
 
 type JsonBody = Record<string, unknown>;
 
@@ -31,6 +32,13 @@ export function createApp(store: AuditStore) {
       if (request.method === "GET" && url.pathname === "/cases") {
         const cases = await store.listCases(readCaseListFilters(url.searchParams));
         return sendJson(response, 200, cases);
+      }
+
+      if (request.method === "GET" && url.pathname === "/exports/workspace") {
+        const cases = await store.listCases(readCaseListFilters(url.searchParams));
+        return sendJson(response, 200, buildWorkspaceIncidentSnapshot(cases), {
+          "content-disposition": 'attachment; filename="workspace-incident-snapshot.json"'
+        });
       }
 
       if (request.method === "POST" && url.pathname === "/cases") {
@@ -69,6 +77,18 @@ export function createApp(store: AuditStore) {
         }
 
         return sendJson(response, 200, found);
+      }
+
+      const caseExportMatch = url.pathname.match(/^\/exports\/cases\/([^/]+)$/);
+      if (request.method === "GET" && caseExportMatch) {
+        const found = await store.findCase(caseExportMatch[1]);
+        if (!found) {
+          return sendJson(response, 404, { error: "case not found", traceId });
+        }
+
+        return sendJson(response, 200, buildCaseIncidentSnapshot(found), {
+          "content-disposition": `attachment; filename="case-${caseExportMatch[1]}-incident-snapshot.json"`
+        });
       }
 
       const approvalMatch = url.pathname.match(/^\/cases\/([^/]+)\/approval$/);
@@ -160,8 +180,16 @@ async function readJsonBody(request: IncomingMessage): Promise<JsonBody> {
   return JSON.parse(Buffer.concat(chunks).toString("utf8")) as JsonBody;
 }
 
-function sendJson(response: ServerResponse, status: number, body: unknown): void {
+function sendJson(
+  response: ServerResponse,
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {}
+): void {
   response.statusCode = status;
+  for (const [key, value] of Object.entries(headers)) {
+    response.setHeader(key, value);
+  }
   response.end(JSON.stringify(body));
 }
 

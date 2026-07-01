@@ -89,11 +89,20 @@ export async function submitCaseDecision(
   });
 }
 
-function getApiBaseUrl(): string {
+export function getWorkspaceSnapshotUrl(filters: ReviewerWorkspaceFilters = {}): string {
+  const query = buildCaseListQuery(filters);
+  return `${getApiBaseUrl()}/exports/workspace${query ? `?${query}` : ""}`;
+}
+
+export function getCaseSnapshotUrl(caseId: string): string {
+  return `${getApiBaseUrl()}/exports/cases/${caseId}`;
+}
+
+export function getApiBaseUrl(): string {
   return process.env.CHAINOPS_API_BASE_URL?.trim() || "http://127.0.0.1:4317";
 }
 
-function buildCaseListQuery(filters: ReviewerWorkspaceFilters): string {
+export function buildCaseListQuery(filters: ReviewerWorkspaceFilters): string {
   const params = new URLSearchParams();
 
   if (filters.limit) {

@@ -455,6 +455,84 @@ test("returns review latency and timeline analytics after reviewer decisions are
   assert.equal(listed.analytics.timeline.at(-1).approvedCount >= 1, true);
 });
 
+test("exports a workspace incident snapshot from the current filtered queue", async (t) => {
+  const store = await createTestStore();
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-request-id": "trace-export-workspace-1"
+    },
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+
+  const response = await fetch(`${baseUrl}/exports/workspace?status=pending_review&risk=high`);
+  assert.equal(response.status, 200);
+  assert.equal(
+    response.headers.get("content-disposition"),
+    'attachment; filename="workspace-incident-snapshot.json"'
+  );
+
+  const snapshot = await response.json();
+  assert.equal(snapshot.scope, "workspace");
+  assert.equal(snapshot.filters.status, "pending_review");
+  assert.equal(snapshot.filters.riskLevel, "high");
+  assert.equal(snapshot.summary.total, 1);
+  assert.equal(snapshot.visibleCases[0].traceId, "trace-export-workspace-1");
+  assert.equal(snapshot.releaseGuide.statusLabel, "Ready");
+});
+
+test("exports a case incident snapshot with trace-backed guide and audit evidence", async (t) => {
+  const store = await createTestStore();
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const createResponse = await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-request-id": "trace-export-case-1"
+    },
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+  const created = await createResponse.json();
+
+  const response = await fetch(`${baseUrl}/exports/cases/${created.caseRecord.id}`);
+  assert.equal(response.status, 200);
+  assert.match(
+    response.headers.get("content-disposition") ?? "",
+    /^attachment; filename="case-.*-incident-snapshot\.json"$/
+  );
+
+  const snapshot = await response.json();
+  assert.equal(snapshot.scope, "case");
+  assert.equal(snapshot.caseRecord.id, created.caseRecord.id);
+  assert.equal(snapshot.incidentGuide.statusLabel, "Watch");
+  assert.equal(Array.isArray(snapshot.auditEvents), true);
+  assert.equal(snapshot.stageTrace.length, 3);
+});
+
 async function createTestStore(provider?: TransactionProvider): Promise<PostgresAuditStore> {
   const schema = `test_${randomUUID().replaceAll("-", "_")}`;
   const databaseUrl = process.env.CHAINOPS_DATABASE_URL;

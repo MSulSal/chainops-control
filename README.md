@@ -16,6 +16,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - Request-stage timing metrics for intake, provider fetch, and reviewer decisions, derived from persisted audit-event details.
 - Case-detail stage traces that show completed, failed, and pending operational steps without bypassing the existing API boundary.
 - Queue-level release guidance and case-level incident/rollback playbooks derived from persisted case, timing, and audit evidence.
+- Exportable workspace and case incident snapshots for shareable operational handoff artifacts.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -47,6 +48,8 @@ Without `CHAINOPS_ETHERSCAN_BASE_URL`, the service uses a deterministic local fi
 - `POST /cases`
 - `GET /cases/:id`
 - `POST /cases/:id/approval`
+- `GET /exports/workspace`
+- `GET /exports/cases/:id`
 
 Example intake body:
 
@@ -74,8 +77,8 @@ Example approval body:
 ## Roadmap
 
 1. Add exportable incident snapshots and shareable operational evidence from the reviewer workspace.
-2. Add a minimal Terraform sandbox and deployment notes for disposable environments.
-3. Add a lightweight local telemetry export path once the product needs a collector beyond persisted audit evidence.
+2. Add a reproducible seeded demo/reset workflow so exported incident snapshots can be regenerated during smoke tests and interviews.
+3. Add a minimal Terraform sandbox and deployment notes for disposable environments.
 
 ## Boundaries
 
