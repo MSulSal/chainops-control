@@ -8,6 +8,7 @@ $env:CHAINOPS_DATABASE_URL = "postgres://chainops:chainops@127.0.0.1:5432/chaino
 $env:CHAINOPS_ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
 docker compose up -d postgres
 npm test
+npm run smoke:demo
 npm start
 npm run start:web
 ```
@@ -16,6 +17,19 @@ The service listens on `http://127.0.0.1:4317` by default.
 The reviewer workspace listens on `http://127.0.0.1:3000` by default and expects the API at `http://127.0.0.1:4317` unless `CHAINOPS_API_BASE_URL` overrides it.
 
 ## Smoke test
+
+Repo-native seeded smoke command:
+
+```powershell
+npm run smoke:demo
+```
+
+Expected result:
+
+- The command starts an in-memory service instance, resets the seeded incident scenario, exports workspace and case snapshots, and exits successfully.
+- The failed case stays `44444444-4444-4444-8444-444444444444` with trace `trace-demo-provider-timeout`.
+- The workspace export still contains `trace-demo-pending-high`, `trace-demo-approved-low`, and `trace-demo-provider-timeout` after a reset, an extra intake, and a second reset.
+- Time-relative fields such as `generatedAt` and current pending-review age may change, but seeded identifiers, statuses, notes, stage outcomes, and incident guidance must stay stable.
 
 ```powershell
 $body = @{ walletAddress = "0x1111111111111111111111111111111111111111" } | ConvertTo-Json
@@ -72,6 +86,7 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - Reviewer decisions now flow through the workspace, but still post to the same API boundary instead of writing directly to PostgreSQL.
 - Workflow analytics and request-stage timing currently come from persisted audit-event details through the reviewer API; there is still no external collector, trace backend, or alerting system.
 - Release and rollback guidance are operational playbooks derived from queue and case evidence; they do not trigger deployment changes automatically.
+- GitHub Actions currently proves the repo-native test, smoke, and Next.js build paths only; it does not yet boot the Docker entrypoint or a separate containerized runtime.
 
 ## Demo reset
 

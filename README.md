@@ -18,6 +18,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - Queue-level release guidance and case-level incident/rollback playbooks derived from persisted case, timing, and audit evidence.
 - Exportable workspace and case incident snapshots for shareable operational handoff artifacts.
 - A reproducible demo-reset workflow that restores seeded pending, approved, rejected, and failed-ingestion cases for smoke tests and interview walkthroughs.
+- A repo-native smoke harness plus GitHub Actions CI that resets the seeded demo scenario, exports canonical incident evidence, and verifies stable traces before release.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -32,6 +33,7 @@ docker compose up -d postgres
 $env:CHAINOPS_DATABASE_URL = "postgres://chainops:chainops@127.0.0.1:5432/chainops"
 $env:CHAINOPS_ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
 npm test
+npm run smoke:demo
 npm start
 npm run start:web
 ```
@@ -78,9 +80,9 @@ Example approval body:
 
 ## Roadmap
 
-1. Add a repo-native smoke-test harness that resets the demo dataset, exports canonical workspace/case evidence, and asserts stable seeded traces in CI.
+1. Add a container-first CI path that boots the API with health/readiness checks and reruns the seeded smoke harness against the running service.
 2. Add a minimal Terraform sandbox and deployment notes for disposable environments.
-3. Add lightweight telemetry export or collector notes only after the smoke-test path is stable.
+3. Add lightweight telemetry export or collector notes only after the container smoke path is stable.
 
 ## Boundaries
 

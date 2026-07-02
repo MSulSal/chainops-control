@@ -27,7 +27,8 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 9: implemented queue-level release guidance plus case-level incident and rollback playbooks derived from persisted case, timing, and audit evidence.
 - Slice 10: implemented exportable workspace and case incident snapshots plus release-note updates for shareable operational evidence.
 - Slice 11: implemented a reproducible seeded demo/reset workflow so incident snapshots can be regenerated from stable case IDs, trace IDs, notes, and timings without manual database cleanup.
-- Slice 12: add a repo-native smoke-test harness that resets the demo dataset, exports canonical workspace/case evidence, and asserts stable seeded traces in CI.
+- Slice 12: implemented a repo-native smoke-test harness plus GitHub Actions CI that reset the seeded demo scenario, export canonical workspace/case incident evidence, and assert stable traces plus incident-guide fields before release.
+- Slice 13: add a container-first CI path that boots the API, checks health/readiness, and reruns the seeded smoke harness against the running service before Terraform.
 
 ## Success evidence
 

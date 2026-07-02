@@ -74,6 +74,10 @@ Shareable operational evidence now exports from the same API boundary that alrea
 
 The reproducible demo path resets the same PostgreSQL-backed case, transaction, and audit tables that power the live reviewer workspace instead of introducing a second fixture-only code path. `POST /demo/reset` replaces the current dataset with seeded pending, approved, rejected, and failed-ingestion cases that carry stable case IDs, trace IDs, reviewer notes, and stage timings. This keeps smoke-test and interview evidence attached to the real service boundary while accepting that export timestamps and current pending age remain time-relative.
 
+## 2026-07-02 seeded smoke-harness decision
+
+The next release-evidence step stays inside the repository and the existing HTTP boundary: a dedicated smoke harness starts the service, resets the seeded demo scenario, exports workspace and case artifacts, and asserts stable traces plus incident-guide fields. GitHub Actions runs that harness alongside the test suite and Next.js build so seeded operational evidence becomes a repeatable release gate before containerized CI, Terraform, or broader telemetry work.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

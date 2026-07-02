@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { newDb } from "pg-mem";
+import { runSeededDemoSmokeTest } from "../src/demo-smoke.ts";
 import { createApp } from "../src/server.ts";
 import {
   EtherscanTransactionProvider,
@@ -547,42 +548,10 @@ test("resets the seeded demo scenario and regenerates stable incident evidence",
   assert.equal(typeof address, "object");
   const baseUrl = `http://127.0.0.1:${address.port}`;
 
-  const firstReset = await fetch(`${baseUrl}/demo/reset`, { method: "POST" });
-  assert.equal(firstReset.status, 200);
-  const firstSeed = await firstReset.json();
-  assert.equal(firstSeed.scenario, "incident_review_v1");
-  assert.equal(firstSeed.seededCases.length, 4);
-
-  const firstWorkspace = await fetch(`${baseUrl}/exports/workspace`);
-  const firstWorkspaceSnapshot = await firstWorkspace.json();
-  const failedCaseId = firstSeed.seededCases.find((seededCase) => seededCase.status === "ingestion_failed")?.id;
-  assert.ok(failedCaseId);
-
-  const firstCase = await fetch(`${baseUrl}/exports/cases/${failedCaseId}`);
-  const firstCaseSnapshot = await firstCase.json();
-
-  await fetch(`${baseUrl}/cases`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ walletAddress: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" })
-  });
-
-  const secondReset = await fetch(`${baseUrl}/demo/reset`, { method: "POST" });
-  assert.equal(secondReset.status, 200);
-  const secondSeed = await secondReset.json();
-  assert.equal(secondSeed.seededCases.length, 4);
-
-  const queueAfterReset = await fetch(`${baseUrl}/cases`);
-  const queueBody = await queueAfterReset.json();
-  assert.equal(queueBody.summary.total, 4);
-
-  const secondWorkspace = await fetch(`${baseUrl}/exports/workspace`);
-  const secondWorkspaceSnapshot = await secondWorkspace.json();
-  const secondCase = await fetch(`${baseUrl}/exports/cases/${failedCaseId}`);
-  const secondCaseSnapshot = await secondCase.json();
-
-  assert.deepEqual(normalizeWorkspaceSnapshot(firstWorkspaceSnapshot), normalizeWorkspaceSnapshot(secondWorkspaceSnapshot));
-  assert.deepEqual(normalizeCaseSnapshot(firstCaseSnapshot), normalizeCaseSnapshot(secondCaseSnapshot));
+  const smoke = await runSeededDemoSmokeTest(baseUrl);
+  assert.equal(smoke.scenario, "incident_review_v1");
+  assert.equal(smoke.failedCaseId, "44444444-4444-4444-8444-444444444444");
+  assert.ok(smoke.traceIds.includes("trace-demo-provider-timeout"));
 });
 
 async function createTestStore(provider?: TransactionProvider): Promise<PostgresAuditStore> {
@@ -600,25 +569,4 @@ function createMemoryStore(schema: string, provider?: TransactionProvider): Post
   const pgAdapter = db.adapters.createPg();
   const pool = new pgAdapter.Pool();
   return new PostgresAuditStore({ pool, schema, provider });
-}
-
-function normalizeWorkspaceSnapshot(snapshot: Record<string, any>) {
-  return {
-    ...snapshot,
-    generatedAt: "<ignored>",
-    analytics: {
-      ...snapshot.analytics,
-      reviewLatency: {
-        ...snapshot.analytics.reviewLatency,
-        oldestPendingHours: "<ignored>"
-      }
-    }
-  };
-}
-
-function normalizeCaseSnapshot(snapshot: Record<string, any>) {
-  return {
-    ...snapshot,
-    generatedAt: "<ignored>"
-  };
 }

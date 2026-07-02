@@ -12,6 +12,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 9: queue-level release guidance and case-level incident/rollback playbooks computed from typed API data so operational response stays explainable inside the existing React boundary.
 - Applied in slice 10: export links in the Next.js workspace now hand off bounded JSON artifacts built from the same typed API state the UI renders, which keeps operational evidence shareable without adding a second client-only export model.
 - Applied in slice 11: a server-action reset control now restores a deterministic demo dataset through the same API boundary, which is a useful pattern for reproducible smoke tests without inventing a private fixture-only UI.
+- Applied in slice 12: a dedicated smoke harness now boots the service, resets the seeded scenario, and asserts stable export evidence over HTTP, which is a useful pattern for proving release readiness without reaching for external test infrastructure too early.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -23,6 +24,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 9: release and rollback guidance stays as deterministic service/UI logic rather than becoming a manual-only note outside the product.
 - Applied in slice 10: dedicated export endpoints package queue filters, case evidence, stage traces, and audit history into review-safe incident snapshots without breaking the existing service boundary.
 - Applied in slice 11: the demo-reset endpoint replaces existing SQL rows with a seeded incident story so stable traces and review notes can be regenerated on demand.
+- Applied in slice 12: the smoke harness reuses the same service and store contracts in-process, which is a good reminder that CI release evidence should exercise the real API boundary instead of reimplementing assertions around internal helpers.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL
@@ -36,6 +38,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 9: persisted queue counts, latency values, and timing summaries now also drive release readiness, watch-state, and hold-state guidance.
 - Applied in slice 10: the same stored queue and case evidence now feeds downloadable incident artifacts, which is a useful pattern for support handoff and debugging exercises.
 - Applied in slice 11: a deterministic seed set now proves how to reset relational workflow state safely, preserve foreign-key order, and keep case/audit identifiers stable enough for repeatable comparisons.
+- Applied in slice 12: stable seeded identifiers make it possible to compare exported incident artifacts across repeated resets while intentionally ignoring only time-relative fields such as export timestamps and current pending age.
 - Docs: https://www.postgresql.org/docs/current/
 
 ## Ethereum data API
@@ -56,7 +59,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 8: trace wallet intake, provider fetch, and reviewer approval through persisted audit-event durations and reviewer workspace cards.
 - Applied in slice 9: release/rollback guidance is now computed from persisted queue and case evidence instead of living only in prose runbooks.
 - Applied in slice 11: seeded trace IDs and resettable incident evidence make it easier to rehearse rollback and failure-analysis stories without claiming external telemetry ownership.
-- Apply next: a repo-native smoke-test harness that drives the reset/export flow in CI before any telemetry expansion.
+- Applied in slice 12: GitHub Actions now runs the seeded smoke harness alongside `npm test` and `npm run build:web`, which turns trace-backed incident evidence into a release gate instead of an informal manual check.
+- Apply next: boot the service through its container/runtime entrypoint in CI, check health/readiness, and rerun the same smoke path before any telemetry expansion.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks

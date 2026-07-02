@@ -13,6 +13,7 @@
 - The reviewer workspace now uses the same API to retrieve queue counts and apply status/risk/search filters, so operational visibility stays SQL-backed instead of becoming browser-only state.
 - The reviewer workspace now uses that same API contract to retrieve review-transition counts, latency summaries, and recent timeline activity, so workflow measurement stays attached to persisted backend state instead of drifting into a separate UI-only report.
 - The local demo path now resets the same SQL-backed workflow to a seeded incident scenario, so exported evidence and walkthroughs can be regenerated without hand-editing the database.
+- The repository now includes a dedicated smoke harness and CI workflow that verify seeded incident exports through the same HTTP boundary before release.
 - Tests cover the happy path, approval path, high-risk fixture, invalid-wallet failure path, provider-timeout persistence, and recovery on retry.
 
 ## Current limits
@@ -43,3 +44,7 @@ Review transitions, latency, and timeline metrics now live on `GET /cases` inste
 ## Seeded demo reset tradeoff
 
 The demo-reset path rewrites the same `cases`, `transactions`, and `audit_events` tables used by the reviewer workflow instead of adding a second in-memory fixture mode. That keeps the smoke-test story honest to the real service boundary and makes exported case evidence repeatable, but it also means the reset is intentionally local-development behavior rather than a production-safe administrative action.
+
+## Seeded smoke harness tradeoff
+
+The first release gate for seeded incident evidence runs the service in-process through the same HTTP endpoints instead of standing up Docker, browsers, or external telemetry first. That keeps CI fast and reviewable while still proving that demo reset plus workspace/case exports remain stable across repeated runs. The next step is to rerun the same path against the runtime entrypoint so container startup and health/readiness behavior become visible too.
