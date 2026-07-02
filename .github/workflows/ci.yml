@@ -29,5 +29,19 @@ jobs:
       - name: Run seeded demo smoke harness
         run: npm run smoke:demo
 
+      - name: Boot API container and rerun live smoke harness
+        run: docker compose up -d api
+
+      - name: Run runtime health, readiness, and seeded smoke checks
+        run: npm run smoke:runtime
+
+      - name: Show compose logs on failure
+        if: failure()
+        run: docker compose logs api postgres
+
+      - name: Stop compose stack
+        if: always()
+        run: docker compose down -v
+
       - name: Build reviewer workspace
         run: npm run build:web

@@ -60,7 +60,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 9: release/rollback guidance is now computed from persisted queue and case evidence instead of living only in prose runbooks.
 - Applied in slice 11: seeded trace IDs and resettable incident evidence make it easier to rehearse rollback and failure-analysis stories without claiming external telemetry ownership.
 - Applied in slice 12: GitHub Actions now runs the seeded smoke harness alongside `npm test` and `npm run build:web`, which turns trace-backed incident evidence into a release gate instead of an informal manual check.
-- Apply next: boot the service through its container/runtime entrypoint in CI, check health/readiness, and rerun the same smoke path before any telemetry expansion.
+- Applied in slice 13: the runtime smoke script now polls `/health` and `/ready` before reusing the same seeded demo/export assertions against the live Docker Compose API, which is a practical pattern for proving startup ordering and runtime contracts without introducing a broader deployment target yet.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks

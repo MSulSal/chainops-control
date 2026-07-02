@@ -19,6 +19,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - Exportable workspace and case incident snapshots for shareable operational handoff artifacts.
 - A reproducible demo-reset workflow that restores seeded pending, approved, rejected, and failed-ingestion cases for smoke tests and interview walkthroughs.
 - A repo-native smoke harness plus GitHub Actions CI that resets the seeded demo scenario, exports canonical incident evidence, and verifies stable traces before release.
+- A container-first runtime smoke path that boots the API against PostgreSQL, checks `/health` and `/ready`, and reruns the seeded incident flow over the live HTTP boundary.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -34,6 +35,7 @@ $env:CHAINOPS_DATABASE_URL = "postgres://chainops:chainops@127.0.0.1:5432/chaino
 $env:CHAINOPS_ETHERSCAN_BASE_URL = "https://api.etherscan.io/api"
 npm test
 npm run smoke:demo
+npm run smoke:runtime
 npm start
 npm run start:web
 ```
@@ -80,9 +82,9 @@ Example approval body:
 
 ## Roadmap
 
-1. Add a container-first CI path that boots the API with health/readiness checks and reruns the seeded smoke harness against the running service.
-2. Add a minimal Terraform sandbox and deployment notes for disposable environments.
-3. Add lightweight telemetry export or collector notes only after the container smoke path is stable.
+1. Add a minimal Terraform sandbox and deployment notes for disposable environments.
+2. Add lightweight telemetry export or collector notes only after the Terraform sandbox documents the runtime boundary.
+3. Add container release/version notes only after the sandbox path proves stable enough to describe deploy/rollback steps truthfully.
 
 ## Boundaries
 

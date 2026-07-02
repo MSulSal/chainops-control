@@ -31,6 +31,20 @@ Expected result:
 - The workspace export still contains `trace-demo-pending-high`, `trace-demo-approved-low`, and `trace-demo-provider-timeout` after a reset, an extra intake, and a second reset.
 - Time-relative fields such as `generatedAt` and current pending-review age may change, but seeded identifiers, statuses, notes, stage outcomes, and incident guidance must stay stable.
 
+Container/runtime smoke command:
+
+```powershell
+docker compose up -d api
+npm run smoke:runtime
+docker compose down -v
+```
+
+Expected result:
+
+- The command waits for `GET /health` and `GET /ready` to pass against the running API container before exercising the seeded workflow.
+- The same seeded export assertions from `npm run smoke:demo` pass through the live HTTP boundary backed by Docker Compose PostgreSQL.
+- If startup or readiness stalls, the command fails with the last observed health/readiness error so runtime ordering problems are visible in CI.
+
 ```powershell
 $body = @{ walletAddress = "0x1111111111111111111111111111111111111111" } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4317/cases -Body $body -ContentType "application/json" -Headers @{ "x-request-id" = "manual-smoke-1" }
@@ -86,7 +100,7 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - Reviewer decisions now flow through the workspace, but still post to the same API boundary instead of writing directly to PostgreSQL.
 - Workflow analytics and request-stage timing currently come from persisted audit-event details through the reviewer API; there is still no external collector, trace backend, or alerting system.
 - Release and rollback guidance are operational playbooks derived from queue and case evidence; they do not trigger deployment changes automatically.
-- GitHub Actions currently proves the repo-native test, smoke, and Next.js build paths only; it does not yet boot the Docker entrypoint or a separate containerized runtime.
+- GitHub Actions now proves the repo-native test path, the in-process seeded smoke path, the containerized API health/readiness path, and the live seeded runtime smoke path before the Next.js build. It still does not cover a separate worker, managed database, or paid deployment target.
 
 ## Demo reset
 
