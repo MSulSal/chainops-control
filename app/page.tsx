@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import type { CaseStatus, RiskLevel } from "../src/domain.ts";
 import {
   fetchCaseSummaries,
   getWorkspaceSnapshotUrl,
+  resetDemoScenario,
   type ReviewerWorkspaceFilters
 } from "../src/reviewer-data";
 import {
@@ -39,6 +42,21 @@ export default async function ReviewerWorkspacePage({
   const operationalGuide = getWorkspaceOperationalGuide(summary, analytics);
   const timelineBars = getTimelineBars(analytics.timeline);
   const workspaceSnapshotUrl = getWorkspaceSnapshotUrl(initialFilters);
+  const flash = readStringParam(resolvedSearchParams.flash);
+  const error = readStringParam(resolvedSearchParams.error);
+
+  async function resetWorkspaceDemo() {
+    "use server";
+
+    try {
+      await resetDemoScenario();
+      revalidatePath("/");
+      redirect("/?flash=demo-reset");
+    } catch (resetError) {
+      const message = encodeURIComponent((resetError as Error).message);
+      redirect(`/?error=${message}`);
+    }
+  }
 
   return (
     <main className="shell">
@@ -71,11 +89,27 @@ export default async function ReviewerWorkspacePage({
                   <strong>Operational evidence</strong>
                   <span className="muted">Reviewer summaries show backlog pressure before a human opens a case detail.</span>
                 </div>
+                <div className="fact">
+                  <strong>Repeatable demo reset</strong>
+                  <span className="muted">A seeded local dataset can be restored so exports and incident drills can be rerun without manual database cleanup.</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
+
+      {flash === "demo-reset" ? (
+        <div className="callout callout-success" style={{ marginBottom: 24 }}>
+          Demo dataset reset. Compare the workspace export plus the `trace-demo-provider-timeout` and
+          `trace-demo-approved-low` case snapshots; only the export timestamp and pending-review age should move between resets.
+        </div>
+      ) : null}
+      {error ? (
+        <div className="callout callout-danger" style={{ marginBottom: 24 }}>
+          {error}
+        </div>
+      ) : null}
 
       <section className="summary-grid">
         {summaryCards.map((card) => (
@@ -85,6 +119,32 @@ export default async function ReviewerWorkspacePage({
             <span className={`chip chip-${card.tone}`}>{card.label}</span>
           </article>
         ))}
+      </section>
+
+      <section className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel-stack">
+          <div>
+            <p className="eyebrow">Demo reset</p>
+            <h2>Restore the seeded incident review scenario</h2>
+            <p className="muted">
+              This resets the local case ledger to a stable mix of failed-ingestion, pending-review, approved, and rejected cases so smoke tests and interview walkthroughs start from the same operational story.
+            </p>
+          </div>
+          <div className="facts-grid">
+            <div className="fact">
+              <strong>Seeded traces</strong>
+              <span className="mono">trace-demo-provider-timeout, trace-demo-pending-high, trace-demo-approved-low</span>
+            </div>
+            <div className="fact">
+              <strong>Compare after reset</strong>
+              <span className="muted">Case IDs, trace IDs, notes, statuses, and stage durations should remain stable across reruns.</span>
+            </div>
+          </div>
+          <form action={resetWorkspaceDemo} className="filter-actions">
+            <button type="submit">Reset demo dataset</button>
+            <a href={workspaceSnapshotUrl}>Export workspace snapshot</a>
+          </form>
+        </div>
       </section>
 
       <section className="detail-grid" style={{ marginBottom: 24 }}>

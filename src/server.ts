@@ -6,6 +6,7 @@ import { getTraceId, writeStructuredLog } from "./logger.ts";
 import { normalizeApprovalDecision, normalizeReviewerNote } from "./domain.ts";
 import { createDefaultTransactionProviderFromEnv } from "./provider.ts";
 import { buildCaseIncidentSnapshot, buildWorkspaceIncidentSnapshot } from "./incident-snapshot.ts";
+import { DEMO_SCENARIO_NAME } from "./demo-scenario.ts";
 
 type JsonBody = Record<string, unknown>;
 
@@ -39,6 +40,11 @@ export function createApp(store: AuditStore) {
         return sendJson(response, 200, buildWorkspaceIncidentSnapshot(cases), {
           "content-disposition": 'attachment; filename="workspace-incident-snapshot.json"'
         });
+      }
+
+      if (request.method === "POST" && url.pathname === "/demo/reset") {
+        const result = await store.resetDemoScenario(readDemoScenario(url, request));
+        return sendJson(response, 200, result);
       }
 
       if (request.method === "POST" && url.pathname === "/cases") {
@@ -140,6 +146,18 @@ function readCaseListFilters(searchParams: URLSearchParams): Partial<CaseListFil
     riskLevel: readEnumValue<RiskLevel>(searchParams.get("risk"), ["low", "medium", "high"]),
     search: searchParams.get("q")?.trim() || undefined
   };
+}
+
+function readDemoScenario(url: URL, request: IncomingMessage): typeof DEMO_SCENARIO_NAME {
+  const fromQuery = url.searchParams.get("scenario")?.trim();
+  const fromHeader = request.headers["x-demo-scenario"]?.toString().trim();
+  const scenario = fromQuery || fromHeader || DEMO_SCENARIO_NAME;
+
+  if (scenario !== DEMO_SCENARIO_NAME) {
+    throw new Error(`unknown demo scenario: ${scenario}`);
+  }
+
+  return DEMO_SCENARIO_NAME;
 }
 
 function readLimit(value: string | null): number | undefined {

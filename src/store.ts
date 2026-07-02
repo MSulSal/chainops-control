@@ -8,6 +8,7 @@ import {
   type CaseRecord,
   type CaseQueueSummary,
   type CaseStatusTransitionCounts,
+  type CaseStatus,
   type CaseTimelinePoint,
   type CaseSummary,
   createCaseRecord,
@@ -24,6 +25,11 @@ import {
   ProviderFetchError,
   type TransactionProvider
 } from "./provider.ts";
+import {
+  buildDemoScenario,
+  DEMO_SCENARIO_NAME,
+  type DemoScenarioName
+} from "./demo-scenario.ts";
 
 type CaseRow = {
   id: string;
@@ -99,10 +105,26 @@ type AuditEventMetricRow = {
   details: Record<string, unknown>;
 };
 
+export type DemoResetResult = {
+  scenario: DemoScenarioName;
+  title: string;
+  description: string;
+  seededCases: Array<{
+    id: string;
+    label: string;
+    status: CaseStatus;
+    traceId: string;
+  }>;
+  workspacePath: string;
+  workspaceSnapshotPath: string;
+  notes: string[];
+};
+
 export type AuditStore = {
   init(): Promise<void>;
   close(): Promise<void>;
   health(): Promise<{ ok: true; caseCount: number; auditEventCount: number }>;
+  resetDemoScenario(name?: DemoScenarioName): Promise<DemoResetResult>;
   listCases(filters?: Partial<CaseListFilters>): Promise<{
     cases: CaseSummary[];
     summary: CaseQueueSummary;
@@ -185,6 +207,47 @@ export class PostgresAuditStore implements AuditStore {
         caseCount: Number(caseCountResult.rows[0].count),
         auditEventCount: Number(auditCountResult.rows[0].count)
       };
+    } finally {
+      client.release();
+    }
+  }
+
+  async resetDemoScenario(name: DemoScenarioName = DEMO_SCENARIO_NAME): Promise<DemoResetResult> {
+    await this.initPromise;
+    const scenario = buildDemoScenario(name);
+    const client = await this.pool.connect();
+
+    try {
+      await client.query("BEGIN");
+      await client.query(`DELETE FROM ${this.schema}.audit_events`);
+      await client.query(`DELETE FROM ${this.schema}.transactions`);
+      await client.query(`DELETE FROM ${this.schema}.cases`);
+
+      for (const seededCase of scenario.cases) {
+        await this.insertCaseRow(client, seededCase.caseRecord, seededCase.idempotencyKey);
+        await this.replaceTransactions(client, seededCase.caseRecord.id, seededCase.caseRecord.transactions);
+        await this.insertAuditEvents(client, seededCase.auditEvents);
+      }
+
+      await client.query("COMMIT");
+
+      return {
+        scenario: scenario.name,
+        title: scenario.title,
+        description: scenario.description,
+        seededCases: scenario.cases.map((seededCase) => ({
+          id: seededCase.caseRecord.id,
+          label: seededCase.label,
+          status: seededCase.caseRecord.status,
+          traceId: seededCase.caseRecord.traceId
+        })),
+        workspacePath: "/",
+        workspaceSnapshotPath: "/exports/workspace",
+        notes: scenario.notes
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
     } finally {
       client.release();
     }
@@ -870,9 +933,9 @@ function mapTransitionCountRow(row?: TransitionCountRow): CaseStatusTransitionCo
 function mapReviewLatencyRow(row?: ReviewLatencyRow): ReviewLatencySummary {
   return {
     reviewedCount: Number(row?.reviewed_count ?? 0),
-    averageHours: parseNullableNumber(row?.average_hours),
-    maxHours: parseNullableNumber(row?.max_hours),
-    oldestPendingHours: parseNullableNumber(row?.oldest_pending_hours)
+    averageHours: roundNullableNumber(parseNullableNumber(row?.average_hours), 1),
+    maxHours: roundNullableNumber(parseNullableNumber(row?.max_hours), 1),
+    oldestPendingHours: roundNullableNumber(parseNullableNumber(row?.oldest_pending_hours), 1)
   };
 }
 
@@ -943,6 +1006,15 @@ function parseNullableNumber(value: string | null | undefined): number | null {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function roundNullableNumber(value: number | null, decimals: number): number | null {
+  if (value == null) {
+    return null;
+  }
+
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
 }
 
 function readDurationMs(details: Record<string, unknown>, key: string): number | null {

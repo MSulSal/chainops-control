@@ -72,3 +72,18 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - Reviewer decisions now flow through the workspace, but still post to the same API boundary instead of writing directly to PostgreSQL.
 - Workflow analytics and request-stage timing currently come from persisted audit-event details through the reviewer API; there is still no external collector, trace backend, or alerting system.
 - Release and rollback guidance are operational playbooks derived from queue and case evidence; they do not trigger deployment changes automatically.
+
+## Demo reset
+
+Use the seeded demo reset when the workspace needs a known incident story before smoke testing, exporting evidence, or walking through the product in an interview.
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4317/demo/reset
+```
+
+Expected result:
+
+- The workspace resets to four seeded cases: one pending review, one approved, one rejected, and one failed ingestion.
+- The seeded traces include `trace-demo-provider-timeout`, `trace-demo-pending-high`, and `trace-demo-approved-low`.
+- `GET /exports/workspace` and the seeded case export URLs can be regenerated immediately after reset.
+- Case IDs, trace IDs, statuses, reviewer notes, and stage durations remain stable across resets; `generatedAt` and current pending-review age remain time-relative.

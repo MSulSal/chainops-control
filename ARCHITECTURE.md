@@ -70,6 +70,10 @@ Release and rollback guidance now stays inside the reviewer workspace as compute
 
 Shareable operational evidence now exports from the same API boundary that already serves the reviewer workspace. `GET /exports/workspace` reuses the current queue filters, SQL-backed analytics, and computed release guide to emit a bounded handoff artifact, while `GET /exports/cases/:id` packages case detail, stage traces, incident guidance, and immutable audit history into a single JSON snapshot. This keeps exports traceable to persisted product state instead of inventing a second reporting store or browser-only export transform.
 
+## 2026-07-02 seeded demo-reset decision
+
+The reproducible demo path resets the same PostgreSQL-backed case, transaction, and audit tables that power the live reviewer workspace instead of introducing a second fixture-only code path. `POST /demo/reset` replaces the current dataset with seeded pending, approved, rejected, and failed-ingestion cases that carry stable case IDs, trace IDs, reviewer notes, and stage timings. This keeps smoke-test and interview evidence attached to the real service boundary while accepting that export timestamps and current pending age remain time-relative.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

@@ -8,6 +8,7 @@ import type {
   CaseStatus,
   RiskLevel
 } from "./domain.ts";
+import type { DemoScenarioName } from "./demo-scenario.ts";
 
 export type CaseDetailResponse = {
   caseRecord: CaseRecord;
@@ -31,6 +32,21 @@ export type ReviewerWorkspaceFilters = {
 export type CaseDecisionInput = {
   decision: "approve" | "reject";
   note: string;
+};
+
+export type DemoResetResponse = {
+  scenario: DemoScenarioName;
+  title: string;
+  description: string;
+  seededCases: Array<{
+    id: string;
+    label: string;
+    status: CaseStatus;
+    traceId: string;
+  }>;
+  workspacePath: string;
+  workspaceSnapshotPath: string;
+  notes: string[];
 };
 
 export async function fetchCaseSummaries(filters: ReviewerWorkspaceFilters = {}): Promise<CaseListResponse> {
@@ -87,6 +103,20 @@ export async function submitCaseDecision(
 
     return detail;
   });
+}
+
+export async function resetDemoScenario(): Promise<DemoResetResponse> {
+  const response = await fetch(`${getApiBaseUrl()}/demo/reset`, {
+    method: "POST",
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error || `failed to reset demo scenario: ${response.status}`);
+  }
+
+  return (await response.json()) as DemoResetResponse;
 }
 
 export function getWorkspaceSnapshotUrl(filters: ReviewerWorkspaceFilters = {}): string {

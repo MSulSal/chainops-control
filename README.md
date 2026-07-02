@@ -17,6 +17,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - Case-detail stage traces that show completed, failed, and pending operational steps without bypassing the existing API boundary.
 - Queue-level release guidance and case-level incident/rollback playbooks derived from persisted case, timing, and audit evidence.
 - Exportable workspace and case incident snapshots for shareable operational handoff artifacts.
+- A reproducible demo-reset workflow that restores seeded pending, approved, rejected, and failed-ingestion cases for smoke tests and interview walkthroughs.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -48,6 +49,7 @@ Without `CHAINOPS_ETHERSCAN_BASE_URL`, the service uses a deterministic local fi
 - `POST /cases`
 - `GET /cases/:id`
 - `POST /cases/:id/approval`
+- `POST /demo/reset`
 - `GET /exports/workspace`
 - `GET /exports/cases/:id`
 
@@ -76,9 +78,9 @@ Example approval body:
 
 ## Roadmap
 
-1. Add exportable incident snapshots and shareable operational evidence from the reviewer workspace.
-2. Add a reproducible seeded demo/reset workflow so exported incident snapshots can be regenerated during smoke tests and interviews.
-3. Add a minimal Terraform sandbox and deployment notes for disposable environments.
+1. Add a repo-native smoke-test harness that resets the demo dataset, exports canonical workspace/case evidence, and asserts stable seeded traces in CI.
+2. Add a minimal Terraform sandbox and deployment notes for disposable environments.
+3. Add lightweight telemetry export or collector notes only after the smoke-test path is stable.
 
 ## Boundaries
 
