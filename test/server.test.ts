@@ -534,6 +534,59 @@ test("exports a telemetry handoff artifact from the current filtered queue", asy
   assert.equal(snapshot.collectorNotes.recommendedMappings.length >= 3, true);
 });
 
+test("exports a latest release record artifact from the current filtered queue", async (t) => {
+  const provider = new EtherscanTransactionProvider({
+    baseUrl: "https://example.test/api",
+    timeoutMs: 25,
+    maxAttempts: 1,
+    retryDelayMs: 0,
+    fetcher: async (_url, init) =>
+      await new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      })
+  });
+  const store = await createTestStore(provider);
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "idempotency-key": "release-record-timeout",
+      "x-request-id": "trace-release-record-timeout"
+    },
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+
+  const response = await fetch(`${baseUrl}/exports/releases/latest?status=ingestion_failed`);
+  assert.equal(response.status, 200);
+  assert.equal(
+    response.headers.get("content-disposition"),
+    'attachment; filename="latest-release-record.json"'
+  );
+
+  const snapshot = await response.json();
+  assert.equal(snapshot.scope, "release_record");
+  assert.equal(snapshot.filters.status, "ingestion_failed");
+  assert.equal(snapshot.release.version, "0.1.0");
+  assert.equal(snapshot.release.channel, "local_container_runtime");
+  assert.equal(snapshot.verification.endpoints.releaseRecordPath, "/exports/releases/latest");
+  assert.equal(snapshot.verification.requiredCommands.length, 4);
+  assert.equal(snapshot.evidence.summary.failedIngestionCount, 1);
+  assert.equal(snapshot.evidence.focusTraceId, "trace-release-record-timeout");
+  assert.match(snapshot.rollback.decision, /roll back/i);
+});
+
 test("exports a case incident snapshot with trace-backed guide and audit evidence", async (t) => {
   const store = await createTestStore();
   const app = createApp(store);

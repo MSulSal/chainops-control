@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { CaseStatus, RiskLevel } from "../src/domain.ts";
 import {
   fetchCaseSummaries,
+  getLatestReleaseRecordUrl,
   getTelemetryHandoffUrl,
   getWorkspaceSnapshotUrl,
   resetDemoScenario,
@@ -44,6 +45,7 @@ export default async function ReviewerWorkspacePage({
   const timelineBars = getTimelineBars(analytics.timeline);
   const workspaceSnapshotUrl = getWorkspaceSnapshotUrl(initialFilters);
   const telemetryHandoffUrl = getTelemetryHandoffUrl(initialFilters);
+  const releaseRecordUrl = getLatestReleaseRecordUrl(initialFilters);
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -146,6 +148,7 @@ export default async function ReviewerWorkspacePage({
             <button type="submit">Reset demo dataset</button>
             <a href={workspaceSnapshotUrl}>Export workspace snapshot</a>
             <a href={telemetryHandoffUrl}>Export telemetry handoff</a>
+            <a href={releaseRecordUrl}>Export latest release record</a>
           </form>
         </div>
       </section>
@@ -201,6 +204,32 @@ export default async function ReviewerWorkspacePage({
       <section className="panel" style={{ marginBottom: 24 }}>
         <div className="panel-stack">
           <div>
+            <p className="eyebrow">Release record</p>
+            <h2>Versioned container release evidence</h2>
+            <p className="muted">
+              Export one bounded JSON artifact that ties the current queue guidance to runtime smoke, telemetry handoff, and rollback evidence before any broader rollout claim.
+            </p>
+          </div>
+          <div className="facts-grid">
+            <div className="fact">
+              <strong>Version source</strong>
+              <span className="muted">Current `package.json` version plus the local container runtime channel.</span>
+            </div>
+            <div className="fact">
+              <strong>Verification contract</strong>
+              <span className="mono">npm test | npm run smoke:demo | npm run smoke:runtime | npm run build:web</span>
+            </div>
+          </div>
+          <div className="filter-actions">
+            <a href={releaseRecordUrl}>Export latest release record</a>
+            <a href={telemetryHandoffUrl}>Export telemetry handoff</a>
+          </div>
+        </div>
+      </section>
+
+      <section className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel-stack">
+          <div>
             <p className="eyebrow">Operational metrics</p>
             <h2>Request-stage timing from persisted audit evidence</h2>
             <p className="muted">
@@ -239,6 +268,7 @@ export default async function ReviewerWorkspacePage({
           </div>
           <div className="filter-actions">
             <a href={workspaceSnapshotUrl}>Export workspace snapshot</a>
+            <a href={releaseRecordUrl}>Export latest release record</a>
           </div>
           <div className="facts-grid">
             <div className="fact">

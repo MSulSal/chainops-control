@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import type {
   AuditEvent,
   CaseListFilters,
@@ -14,6 +15,9 @@ import {
   getProviderSummary,
   getWorkspaceOperationalGuide
 } from "./reviewer-view.ts";
+
+const require = createRequire(import.meta.url);
+const packageJson = require("../package.json") as { version: string };
 
 export type WorkspaceIncidentSnapshot = {
   generatedAt: string;
@@ -55,6 +59,7 @@ export type TelemetryHandoffSnapshot = {
       readyPath: string;
       demoResetPath: string;
       workspaceExportPath: string;
+      releaseRecordPath: string;
     };
     reviewer: {
       workspacePath: string;
@@ -95,6 +100,58 @@ export type TelemetryHandoffSnapshot = {
     }>;
     currentLimits: string[];
   };
+};
+
+export type ReleaseRecordSnapshot = {
+  generatedAt: string;
+  scope: "release_record";
+  filters: CaseListFilters;
+  release: {
+    version: string;
+    channel: "local_container_runtime";
+    statusLabel: ReturnType<typeof getWorkspaceOperationalGuide>["statusLabel"];
+    summary: string;
+    containerImages: {
+      api: string;
+      postgres: string;
+    };
+    reviewerWorkspacePath: string;
+  };
+  verification: {
+    requiredCommands: Array<{
+      name: string;
+      command: string;
+      purpose: string;
+    }>;
+    endpoints: {
+      healthPath: string;
+      readyPath: string;
+      demoResetPath: string;
+      workspaceExportPath: string;
+      telemetryExportPath: string;
+      releaseRecordPath: string;
+    };
+    seededScenario: {
+      name: string;
+      expectedTraceIds: string[];
+    };
+  };
+  evidence: {
+    summary: CaseQueueSummary;
+    analytics: CaseQueueAnalytics;
+    releaseGuide: ReturnType<typeof getWorkspaceOperationalGuide>;
+    telemetryHandoffPath: string;
+    workspaceSnapshotPath: string;
+    focusCasePath: string | null;
+    focusCaseExportPath: string | null;
+    focusTraceId: string | null;
+  };
+  rollback: {
+    decision: string;
+    triggers: string[];
+    evidence: string[];
+  };
+  boundaries: string[];
 };
 
 export function buildWorkspaceIncidentSnapshot(input: {
@@ -157,7 +214,8 @@ export function buildTelemetryHandoffSnapshot(input: {
         healthPath: "/health",
         readyPath: "/ready",
         demoResetPath: "/demo/reset",
-        workspaceExportPath: "/exports/workspace"
+        workspaceExportPath: "/exports/workspace",
+        releaseRecordPath: "/exports/releases/latest"
       },
       reviewer: {
         workspacePath: "/"
@@ -237,5 +295,105 @@ export function buildTelemetryHandoffSnapshot(input: {
         "The Terraform sandbox records the runtime contract only; it does not deploy collectors or managed infrastructure."
       ]
     }
+  };
+}
+
+export function buildReleaseRecordSnapshot(input: {
+  generatedAt?: string;
+  filters: CaseListFilters;
+  summary: CaseQueueSummary;
+  analytics: CaseQueueAnalytics;
+  cases: CaseSummary[];
+}): ReleaseRecordSnapshot {
+  const releaseGuide = getWorkspaceOperationalGuide(input.summary, input.analytics);
+  const focusCase =
+    input.cases.find((caseItem) => caseItem.status === "ingestion_failed") ??
+    input.cases.find((caseItem) => caseItem.status === "pending_review") ??
+    input.cases[0];
+
+  return {
+    generatedAt: input.generatedAt ?? new Date().toISOString(),
+    scope: "release_record",
+    filters: input.filters,
+    release: {
+      version: packageJson.version,
+      channel: "local_container_runtime",
+      statusLabel: releaseGuide.statusLabel,
+      summary: releaseGuide.summary,
+      containerImages: {
+        api: "local Dockerfile build via docker compose service api",
+        postgres: "postgres:16-alpine"
+      },
+      reviewerWorkspacePath: "/"
+    },
+    verification: {
+      requiredCommands: [
+        {
+          name: "unit_and_api_contracts",
+          command: "npm test",
+          purpose: "Verify service behavior, export contracts, and failure-path coverage."
+        },
+        {
+          name: "seeded_demo_smoke",
+          command: "npm run smoke:demo",
+          purpose: "Reset the seeded incident scenario and verify export stability over HTTP."
+        },
+        {
+          name: "container_runtime_smoke",
+          command: "npm run smoke:runtime",
+          purpose: "Wait for /health and /ready against the running containerized API, then rerun the seeded smoke flow."
+        },
+        {
+          name: "reviewer_workspace_build",
+          command: "npm run build:web",
+          purpose: "Keep the Next.js reviewer workspace shippable alongside the API release record."
+        }
+      ],
+      endpoints: {
+        healthPath: "/health",
+        readyPath: "/ready",
+        demoResetPath: "/demo/reset",
+        workspaceExportPath: "/exports/workspace",
+        telemetryExportPath: "/exports/telemetry",
+        releaseRecordPath: "/exports/releases/latest"
+      },
+      seededScenario: {
+        name: "incident_review_v1",
+        expectedTraceIds: [
+          "trace-demo-provider-timeout",
+          "trace-demo-pending-high",
+          "trace-demo-approved-low"
+        ]
+      }
+    },
+    evidence: {
+      summary: input.summary,
+      analytics: input.analytics,
+      releaseGuide,
+      telemetryHandoffPath: "/exports/telemetry",
+      workspaceSnapshotPath: "/exports/workspace",
+      focusCasePath: focusCase ? `/cases/${focusCase.id}` : null,
+      focusCaseExportPath: focusCase ? `/exports/cases/${focusCase.id}` : null,
+      focusTraceId: focusCase?.traceId ?? null
+    },
+    rollback: {
+      decision: releaseGuide.rollbackDecision,
+      triggers: [
+        "Roll back only when failed ingestions or stage-duration regressions line up with a recent provider, timeout, or runtime change.",
+        "Replay an affected request with the same Idempotency-Key after the rollback to prove recovery without duplicate state.",
+        "Compare the latest telemetry handoff and case export artifacts against the last known healthy seeded runtime smoke run."
+      ],
+      evidence: [
+        ...releaseGuide.evidence,
+        focusCase
+          ? `Focus case for rollback drill: ${focusCase.id} / trace ${focusCase.traceId}.`
+          : "No focus case is available in the current filtered queue."
+      ]
+    },
+    boundaries: [
+      "This release record describes the current local container/runtime contract only; it does not claim a managed deployment target.",
+      "No external collector, trace backend, or alerting service is provisioned by this artifact.",
+      "Release and rollback guidance remain operator-facing recommendations derived from persisted case and audit evidence."
+    ]
   };
 }

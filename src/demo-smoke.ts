@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { CaseIncidentSnapshot, WorkspaceIncidentSnapshot } from "./incident-snapshot.ts";
+import type { CaseIncidentSnapshot, ReleaseRecordSnapshot, WorkspaceIncidentSnapshot } from "./incident-snapshot.ts";
 import { DEMO_SCENARIO_NAME } from "./demo-scenario.ts";
 
 type DemoResetResponse = {
@@ -45,6 +45,14 @@ export async function runSeededDemoSmokeTest(
   assert.equal(firstCaseSnapshot.stageTrace[1]?.statusLabel, "Failed");
   assert.match(firstCaseSnapshot.providerSummary, /error timeout/);
 
+  const firstReleaseRecord = await fetchImpl(`${baseUrl}/exports/releases/latest`);
+  assert.equal(firstReleaseRecord.status, 200);
+  const firstReleaseRecordSnapshot = (await firstReleaseRecord.json()) as ReleaseRecordSnapshot;
+  assert.equal(firstReleaseRecordSnapshot.scope, "release_record");
+  assert.equal(firstReleaseRecordSnapshot.release.statusLabel, "Hold");
+  assert.equal(firstReleaseRecordSnapshot.verification.endpoints.releaseRecordPath, "/exports/releases/latest");
+  assert.equal(firstReleaseRecordSnapshot.evidence.focusTraceId, "trace-demo-provider-timeout");
+
   await fetchImpl(`${baseUrl}/cases`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -67,6 +75,9 @@ export async function runSeededDemoSmokeTest(
   const secondCase = await fetchImpl(`${baseUrl}/exports/cases/${failedCaseId}`);
   assert.equal(secondCase.status, 200);
   const secondCaseSnapshot = (await secondCase.json()) as CaseIncidentSnapshot;
+  const secondReleaseRecord = await fetchImpl(`${baseUrl}/exports/releases/latest`);
+  assert.equal(secondReleaseRecord.status, 200);
+  const secondReleaseRecordSnapshot = (await secondReleaseRecord.json()) as ReleaseRecordSnapshot;
 
   const traceIds = secondWorkspaceSnapshot.visibleCases.map((caseItem) => caseItem.traceId);
   assert.ok(traceIds.includes("trace-demo-provider-timeout"));
@@ -78,6 +89,10 @@ export async function runSeededDemoSmokeTest(
     normalizeWorkspaceSnapshot(secondWorkspaceSnapshot)
   );
   assert.deepEqual(normalizeCaseSnapshot(firstCaseSnapshot), normalizeCaseSnapshot(secondCaseSnapshot));
+  assert.deepEqual(
+    normalizeReleaseRecordSnapshot(firstReleaseRecordSnapshot),
+    normalizeReleaseRecordSnapshot(secondReleaseRecordSnapshot)
+  );
 
   return {
     scenario: secondSeed.scenario,
@@ -110,5 +125,34 @@ function normalizeCaseSnapshot(snapshot: CaseIncidentSnapshot) {
   return {
     ...snapshot,
     generatedAt: "<ignored>"
+  };
+}
+
+function normalizeReleaseRecordSnapshot(snapshot: ReleaseRecordSnapshot) {
+  return {
+    ...snapshot,
+    generatedAt: "<ignored>",
+    evidence: {
+      ...snapshot.evidence,
+      analytics: {
+        ...snapshot.evidence.analytics,
+        reviewLatency: {
+          ...snapshot.evidence.analytics.reviewLatency,
+          oldestPendingHours: "<ignored>"
+        }
+      },
+      releaseGuide: {
+        ...snapshot.evidence.releaseGuide,
+        evidence: snapshot.evidence.releaseGuide.evidence.map((item) =>
+          item.startsWith("Oldest pending review age: ") ? "Oldest pending review age: <ignored> hours." : item
+        )
+      }
+    },
+    rollback: {
+      ...snapshot.rollback,
+      evidence: snapshot.rollback.evidence.map((item) =>
+        item.startsWith("Oldest pending review age: ") ? "Oldest pending review age: <ignored> hours." : item
+      )
+    }
   };
 }

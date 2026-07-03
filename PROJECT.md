@@ -31,6 +31,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 13: implemented a container-first CI path that boots the API, checks `/health` and `/ready`, and reruns the seeded smoke harness against the running service before Terraform.
 - Slice 14: implemented a provider-free Terraform sandbox contract under `infra/terraform/sandbox` that validates the current runtime inputs and outputs without claiming paid infrastructure.
 - Slice 15: implemented a telemetry handoff export that packages the current health/readiness contract, seeded smoke commands, persisted timing evidence, trace samples, and bounded collector notes for observability planning.
+- Slice 16: implemented a latest-release record export that packages the current package version, container runtime contract, smoke/build commands, telemetry links, and rollback evidence into one bounded release artifact.
 
 ## Success evidence
 

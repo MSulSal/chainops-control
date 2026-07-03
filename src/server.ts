@@ -7,6 +7,7 @@ import { normalizeApprovalDecision, normalizeReviewerNote } from "./domain.ts";
 import { createDefaultTransactionProviderFromEnv } from "./provider.ts";
 import {
   buildCaseIncidentSnapshot,
+  buildReleaseRecordSnapshot,
   buildTelemetryHandoffSnapshot,
   buildWorkspaceIncidentSnapshot
 } from "./incident-snapshot.ts";
@@ -50,6 +51,13 @@ export function createApp(store: AuditStore) {
         const cases = await store.listCases(readCaseListFilters(url.searchParams));
         return sendJson(response, 200, buildTelemetryHandoffSnapshot(cases), {
           "content-disposition": 'attachment; filename="telemetry-handoff.json"'
+        });
+      }
+
+      if (request.method === "GET" && url.pathname === "/exports/releases/latest") {
+        const cases = await store.listCases(readCaseListFilters(url.searchParams));
+        return sendJson(response, 200, buildReleaseRecordSnapshot(cases), {
+          "content-disposition": 'attachment; filename="latest-release-record.json"'
         });
       }
 

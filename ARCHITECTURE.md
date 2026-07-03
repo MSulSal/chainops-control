@@ -90,6 +90,10 @@ The first Terraform slice stays provider-free on purpose. It captures the curren
 
 The first observability slice also stays provider-free. `GET /exports/telemetry` packages the existing health/readiness paths, seeded smoke commands, release guide, persisted timing analytics, and recent trace samples into one JSON handoff artifact, then adds bounded collector notes that explain how to forward those same signals into a future uptime monitor, collector, or incident process. This keeps the observability story anchored to the current API and audit-ledger contract instead of inventing OpenTelemetry infrastructure, duplicate timers, or a second runtime before the repository can prove those pieces honestly.
 
+## 2026-07-03 release-record decision
+
+The first release-note slice also stays inside the current service boundary. `GET /exports/releases/latest` packages the current package version, local container runtime contract, verification commands, telemetry links, and rollback evidence into one bounded artifact derived from the same queue analytics and case exports already used elsewhere. That keeps version notes attached to tested runtime evidence instead of a separate manual checklist, while still making it explicit that the repository does not yet publish a managed deployment target or external release backend.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

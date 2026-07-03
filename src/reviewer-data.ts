@@ -129,6 +129,11 @@ export function getTelemetryHandoffUrl(filters: ReviewerWorkspaceFilters = {}): 
   return `${getApiBaseUrl()}/exports/telemetry${query ? `?${query}` : ""}`;
 }
 
+export function getLatestReleaseRecordUrl(filters: ReviewerWorkspaceFilters = {}): string {
+  const query = buildCaseListQuery(filters);
+  return `${getApiBaseUrl()}/exports/releases/latest${query ? `?${query}` : ""}`;
+}
+
 export function getCaseSnapshotUrl(caseId: string): string {
   return `${getApiBaseUrl()}/exports/cases/${caseId}`;
 }

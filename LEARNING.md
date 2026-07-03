@@ -13,6 +13,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 10: export links in the Next.js workspace now hand off bounded JSON artifacts built from the same typed API state the UI renders, which keeps operational evidence shareable without adding a second client-only export model.
 - Applied in slice 11: a server-action reset control now restores a deterministic demo dataset through the same API boundary, which is a useful pattern for reproducible smoke tests without inventing a private fixture-only UI.
 - Applied in slice 12: a dedicated smoke harness now boots the service, resets the seeded scenario, and asserts stable export evidence over HTTP, which is a useful pattern for proving release readiness without reaching for external test infrastructure too early.
+- Applied in slice 16: the same seeded smoke path now also validates a bounded release record artifact, which is a useful reminder that release notes are more trustworthy when they are generated from the same runtime evidence already used for incident and telemetry exports.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -26,6 +27,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 11: the demo-reset endpoint replaces existing SQL rows with a seeded incident story so stable traces and review notes can be regenerated on demand.
 - Applied in slice 12: the smoke harness reuses the same service and store contracts in-process, which is a good reminder that CI release evidence should exercise the real API boundary instead of reimplementing assertions around internal helpers.
 - Applied in slice 15: a telemetry handoff artifact can stay honest by exporting the existing health/readiness, smoke, trace, and audit-ledger evidence first, then leaving collector plumbing as documented next-step work instead of pretending the stack already exists.
+- Applied in slice 16: a release-record endpoint can stay reviewable by packaging existing queue guidance, smoke commands, and rollback evidence instead of inventing a deployment API or external release service.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL
@@ -66,6 +68,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 13: the runtime smoke script now polls `/health` and `/ready` before reusing the same seeded demo/export assertions against the live Docker Compose API, which is a practical pattern for proving startup ordering and runtime contracts without introducing a broader deployment target yet.
 - Applied in slice 14: the Terraform sandbox reuses those same health/readiness, demo-reset, and smoke commands as IaC outputs, which is a good reminder that deployment/runbook evidence should point back to the tested runtime contract instead of diverging into a separate undocumented path.
 - Applied in slice 15: the telemetry handoff export reuses the same runtime contract plus persisted timing metrics, which is a useful pattern for observability planning when the honest answer is still "collector not provisioned yet."
+- Applied in slice 16: package-version release notes stay bounded when they point back to `npm test`, both smoke commands, and the same trace-backed rollback evidence instead of claiming that a deployment pipeline or hosted release target already exists.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
