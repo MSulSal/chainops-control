@@ -25,6 +25,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 10: dedicated export endpoints package queue filters, case evidence, stage traces, and audit history into review-safe incident snapshots without breaking the existing service boundary.
 - Applied in slice 11: the demo-reset endpoint replaces existing SQL rows with a seeded incident story so stable traces and review notes can be regenerated on demand.
 - Applied in slice 12: the smoke harness reuses the same service and store contracts in-process, which is a good reminder that CI release evidence should exercise the real API boundary instead of reimplementing assertions around internal helpers.
+- Applied in slice 15: a telemetry handoff artifact can stay honest by exporting the existing health/readiness, smoke, trace, and audit-ledger evidence first, then leaving collector plumbing as documented next-step work instead of pretending the stack already exists.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL
@@ -39,6 +40,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 10: the same stored queue and case evidence now feeds downloadable incident artifacts, which is a useful pattern for support handoff and debugging exercises.
 - Applied in slice 11: a deterministic seed set now proves how to reset relational workflow state safely, preserve foreign-key order, and keep case/audit identifiers stable enough for repeatable comparisons.
 - Applied in slice 12: stable seeded identifiers make it possible to compare exported incident artifacts across repeated resets while intentionally ignoring only time-relative fields such as export timestamps and current pending age.
+- Applied in slice 15: recent trace samples can be handed off as JSON links plus case-export paths, which is a practical bridge between product evidence and future observability tooling.
 - Docs: https://www.postgresql.org/docs/current/
 
 ## Ethereum data API
@@ -63,6 +65,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 12: GitHub Actions now runs the seeded smoke harness alongside `npm test` and `npm run build:web`, which turns trace-backed incident evidence into a release gate instead of an informal manual check.
 - Applied in slice 13: the runtime smoke script now polls `/health` and `/ready` before reusing the same seeded demo/export assertions against the live Docker Compose API, which is a practical pattern for proving startup ordering and runtime contracts without introducing a broader deployment target yet.
 - Applied in slice 14: the Terraform sandbox reuses those same health/readiness, demo-reset, and smoke commands as IaC outputs, which is a good reminder that deployment/runbook evidence should point back to the tested runtime contract instead of diverging into a separate undocumented path.
+- Applied in slice 15: the telemetry handoff export reuses the same runtime contract plus persisted timing metrics, which is a useful pattern for observability planning when the honest answer is still "collector not provisioned yet."
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks

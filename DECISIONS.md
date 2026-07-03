@@ -49,6 +49,10 @@ The demo-reset path rewrites the same `cases`, `transactions`, and `audit_events
 
 The first release gate for seeded incident evidence runs the service in-process through the same HTTP endpoints instead of standing up Docker, browsers, or external telemetry first. That keeps CI fast and reviewable while still proving that demo reset plus workspace/case exports remain stable across repeated runs. The next step is to rerun the same path against the runtime entrypoint so container startup and health/readiness behavior become visible too.
 
+## Telemetry handoff tradeoff
+
+The first observability-facing artifact exports the current runtime contract and evidence instead of pretending the repository already owns a collector. That keeps the implementation reviewable and resume-safe: health/readiness, smoke commands, request-stage timings, release guidance, and trace samples are real product signals today, while OTLP pipelines, dashboards, and alerts remain documented future wiring. The tradeoff is that the repository still lacks live metric scraping or trace ingestion, but the handoff JSON makes that gap explicit and gives the next slice a stable contract to build on.
+
 ## Terraform sandbox tradeoff
 
 The first Terraform slice uses only validated inputs, computed locals, outputs, and `terraform_data` state instead of a provider-backed Docker or cloud target. That is intentionally conservative: this host cannot currently validate Terraform CLI plus a real runtime target, and the product still has no truthful managed-environment story. Capturing the reviewed runtime contract in Terraform now is still useful because it proves variable validation, deployment-shape thinking, and operator handoff without inventing infrastructure behavior that the repository cannot yet test.

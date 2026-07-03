@@ -86,6 +86,10 @@ The next runtime-evidence step keeps using the same seeded smoke assertions, but
 
 The first Terraform slice stays provider-free on purpose. It captures the current API, PostgreSQL, reviewer workspace, health/readiness, seeded demo reset, and smoke-command contract as validated Terraform inputs and outputs, then stores that reviewed manifest in Terraform state through `terraform_data` instead of pretending a paid or managed runtime already exists. That keeps the infrastructure layer honest to the current product boundary, gives the repo a real IaC surface for interview discussion, and leaves provider-backed Docker or cloud targets for a later host that can actually run Terraform plus the target runtime.
 
+## 2026-07-03 telemetry-handoff decision
+
+The first observability slice also stays provider-free. `GET /exports/telemetry` packages the existing health/readiness paths, seeded smoke commands, release guide, persisted timing analytics, and recent trace samples into one JSON handoff artifact, then adds bounded collector notes that explain how to forward those same signals into a future uptime monitor, collector, or incident process. This keeps the observability story anchored to the current API and audit-ledger contract instead of inventing OpenTelemetry infrastructure, duplicate timers, or a second runtime before the repository can prove those pieces honestly.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

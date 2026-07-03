@@ -495,6 +495,45 @@ test("exports a workspace incident snapshot from the current filtered queue", as
   assert.equal(snapshot.releaseGuide.statusLabel, "Ready");
 });
 
+test("exports a telemetry handoff artifact from the current filtered queue", async (t) => {
+  const store = await createTestStore();
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-request-id": "trace-export-telemetry-1"
+    },
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+
+  const response = await fetch(`${baseUrl}/exports/telemetry?status=pending_review&risk=high`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-disposition"), 'attachment; filename="telemetry-handoff.json"');
+
+  const snapshot = await response.json();
+  assert.equal(snapshot.scope, "telemetry_handoff");
+  assert.equal(snapshot.service.api.healthPath, "/health");
+  assert.equal(snapshot.queueEvidence.filters.status, "pending_review");
+  assert.equal(snapshot.queueEvidence.filters.riskLevel, "high");
+  assert.equal(snapshot.queueEvidence.summary.total, 1);
+  assert.equal(snapshot.queueEvidence.traceSamples[0].traceId, "trace-export-telemetry-1");
+  assert.equal(snapshot.smoke.demoCommand, "npm run smoke:demo");
+  assert.equal(snapshot.collectorNotes.status, "bounded_planning_only");
+  assert.equal(snapshot.collectorNotes.recommendedMappings.length >= 3, true);
+});
+
 test("exports a case incident snapshot with trace-backed guide and audit evidence", async (t) => {
   const store = await createTestStore();
   const app = createApp(store);

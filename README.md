@@ -21,6 +21,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - A repo-native smoke harness plus GitHub Actions CI that resets the seeded demo scenario, exports canonical incident evidence, and verifies stable traces before release.
 - A container-first runtime smoke path that boots the API against PostgreSQL, checks `/health` and `/ready`, and reruns the seeded incident flow over the live HTTP boundary.
 - A minimal Terraform sandbox contract that validates the current API/PostgreSQL/runtime boundary and emits disposable operator commands without claiming paid or managed infrastructure.
+- A telemetry handoff export that packages health/readiness paths, seeded smoke commands, persisted timing evidence, trace samples, and bounded collector notes without claiming an external observability stack.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -68,6 +69,7 @@ Without `CHAINOPS_ETHERSCAN_BASE_URL`, the service uses a deterministic local fi
 - `POST /cases/:id/approval`
 - `POST /demo/reset`
 - `GET /exports/workspace`
+- `GET /exports/telemetry`
 - `GET /exports/cases/:id`
 
 Example intake body:
@@ -95,9 +97,9 @@ Example approval body:
 
 ## Roadmap
 
-1. Add lightweight telemetry export or collector notes only after the Terraform sandbox documents the runtime boundary.
-2. Add container release/version notes only after the sandbox path proves stable enough to describe deploy/rollback steps truthfully.
-3. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
+1. Add container release/version notes only after the telemetry handoff proves stable enough to describe deploy/rollback steps truthfully.
+2. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
+3. Add a real collector or trace backend only after a provider-backed runtime exists to host and validate it truthfully.
 
 ## Boundaries
 

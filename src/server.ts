@@ -5,7 +5,11 @@ import { type AuditStore, PostgresAuditStore } from "./store.ts";
 import { getTraceId, writeStructuredLog } from "./logger.ts";
 import { normalizeApprovalDecision, normalizeReviewerNote } from "./domain.ts";
 import { createDefaultTransactionProviderFromEnv } from "./provider.ts";
-import { buildCaseIncidentSnapshot, buildWorkspaceIncidentSnapshot } from "./incident-snapshot.ts";
+import {
+  buildCaseIncidentSnapshot,
+  buildTelemetryHandoffSnapshot,
+  buildWorkspaceIncidentSnapshot
+} from "./incident-snapshot.ts";
 import { DEMO_SCENARIO_NAME } from "./demo-scenario.ts";
 
 type JsonBody = Record<string, unknown>;
@@ -39,6 +43,13 @@ export function createApp(store: AuditStore) {
         const cases = await store.listCases(readCaseListFilters(url.searchParams));
         return sendJson(response, 200, buildWorkspaceIncidentSnapshot(cases), {
           "content-disposition": 'attachment; filename="workspace-incident-snapshot.json"'
+        });
+      }
+
+      if (request.method === "GET" && url.pathname === "/exports/telemetry") {
+        const cases = await store.listCases(readCaseListFilters(url.searchParams));
+        return sendJson(response, 200, buildTelemetryHandoffSnapshot(cases), {
+          "content-disposition": 'attachment; filename="telemetry-handoff.json"'
         });
       }
 

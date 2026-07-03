@@ -31,6 +31,18 @@ Expected result:
 - The workspace export still contains `trace-demo-pending-high`, `trace-demo-approved-low`, and `trace-demo-provider-timeout` after a reset, an extra intake, and a second reset.
 - Time-relative fields such as `generatedAt` and current pending-review age may change, but seeded identifiers, statuses, notes, stage outcomes, and incident guidance must stay stable.
 
+Telemetry handoff export:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:4317/exports/telemetry -OutFile telemetry-handoff.json
+```
+
+Expected result:
+
+- The JSON artifact includes `/health`, `/ready`, `/demo/reset`, `npm run smoke:demo`, and `npm run smoke:runtime` so an operator or future collector can stay attached to the current runtime boundary.
+- Queue summary, release guidance, request-stage timing analytics, and up to five recent trace samples are exported from the same API-backed reviewer state.
+- Collector notes stay explicitly bounded: they describe how to forward existing signals into a future observability stack, but they do not claim that an external collector, trace backend, or alerting service already exists.
+
 Container/runtime smoke command:
 
 ```powershell
@@ -97,6 +109,7 @@ Expected result:
 12. If the provider times out, confirm the workspace shows `Ingestion failed`, the provider/intake timing remains visible, and retry-safe guidance references reusing the same idempotency key.
 13. Use `Export workspace snapshot` and confirm the browser downloads JSON with the active filters, queue summary, release guide, and visible-case evidence.
 14. Use `Export case snapshot` from a detail page and confirm the JSON includes the case record, stage trace, incident guide, and immutable audit events.
+15. Use `Export telemetry handoff` from the workspace and confirm the JSON includes the health/readiness paths, smoke commands, queue evidence, trace samples, and bounded collector notes.
 
 ## Human approval
 
@@ -120,6 +133,7 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - Risk indicators are deterministic and human approval is mandatory.
 - Reviewer decisions now flow through the workspace, but still post to the same API boundary instead of writing directly to PostgreSQL.
 - Workflow analytics and request-stage timing currently come from persisted audit-event details through the reviewer API; there is still no external collector, trace backend, or alerting system.
+- The telemetry handoff export is an operator and planning artifact only. It does not emit OTLP traffic, scrape metrics, or provision observability infrastructure on its own.
 - Release and rollback guidance are operational playbooks derived from queue and case evidence; they do not trigger deployment changes automatically.
 - GitHub Actions now proves the repo-native test path, the in-process seeded smoke path, the containerized API health/readiness path, and the live seeded runtime smoke path before the Next.js build. It still does not cover a separate worker, managed database, or paid deployment target.
 - The Terraform sandbox currently models and validates the disposable runtime contract only. It does not yet provision Docker, a VM, a managed database, or a cloud network.

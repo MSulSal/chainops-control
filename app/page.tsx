@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { CaseStatus, RiskLevel } from "../src/domain.ts";
 import {
   fetchCaseSummaries,
+  getTelemetryHandoffUrl,
   getWorkspaceSnapshotUrl,
   resetDemoScenario,
   type ReviewerWorkspaceFilters
@@ -42,6 +43,7 @@ export default async function ReviewerWorkspacePage({
   const operationalGuide = getWorkspaceOperationalGuide(summary, analytics);
   const timelineBars = getTimelineBars(analytics.timeline);
   const workspaceSnapshotUrl = getWorkspaceSnapshotUrl(initialFilters);
+  const telemetryHandoffUrl = getTelemetryHandoffUrl(initialFilters);
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -143,6 +145,7 @@ export default async function ReviewerWorkspacePage({
           <form action={resetWorkspaceDemo} className="filter-actions">
             <button type="submit">Reset demo dataset</button>
             <a href={workspaceSnapshotUrl}>Export workspace snapshot</a>
+            <a href={telemetryHandoffUrl}>Export telemetry handoff</a>
           </form>
         </div>
       </section>
@@ -214,6 +217,9 @@ export default async function ReviewerWorkspacePage({
                 <p className="muted">{card.description}</p>
               </article>
             ))}
+          </div>
+          <div className="filter-actions">
+            <a href={telemetryHandoffUrl}>Export telemetry handoff</a>
           </div>
         </div>
       </section>
