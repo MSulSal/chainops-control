@@ -45,6 +45,27 @@ Expected result:
 - The same seeded export assertions from `npm run smoke:demo` pass through the live HTTP boundary backed by Docker Compose PostgreSQL.
 - If startup or readiness stalls, the command fails with the last observed health/readiness error so runtime ordering problems are visible in CI.
 
+## Terraform sandbox
+
+Use the Terraform sandbox when the goal is to review or hand off the disposable runtime contract without claiming that this repository already provisions paid infrastructure.
+
+```powershell
+cd infra/terraform/sandbox
+Copy-Item terraform.tfvars.example terraform.tfvars
+terraform init
+terraform plan
+terraform apply -auto-approve
+terraform output operator_runbook
+terraform destroy -auto-approve
+```
+
+Expected result:
+
+- Terraform validates the current API host/port, reviewer port, PostgreSQL URL, image references, and optional Etherscan base URL before writing state.
+- `sandbox_manifest` output mirrors the current service contract: API base URL, reviewer base URL, `/health`, `/ready`, `/demo/reset`, smoke commands, and the environment variables that the API container expects.
+- `operator_runbook` output lists the exact docker-compose, smoke, and reviewer commands needed to exercise the same runtime boundary manually.
+- No provider-backed infrastructure is created in this slice; `terraform apply` records the reviewed disposable contract in state through `terraform_data` so the next provider-backed target can reuse the same inputs and outputs instead of inventing a second deployment story.
+
 ```powershell
 $body = @{ walletAddress = "0x1111111111111111111111111111111111111111" } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4317/cases -Body $body -ContentType "application/json" -Headers @{ "x-request-id" = "manual-smoke-1" }
@@ -101,6 +122,7 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - Workflow analytics and request-stage timing currently come from persisted audit-event details through the reviewer API; there is still no external collector, trace backend, or alerting system.
 - Release and rollback guidance are operational playbooks derived from queue and case evidence; they do not trigger deployment changes automatically.
 - GitHub Actions now proves the repo-native test path, the in-process seeded smoke path, the containerized API health/readiness path, and the live seeded runtime smoke path before the Next.js build. It still does not cover a separate worker, managed database, or paid deployment target.
+- The Terraform sandbox currently models and validates the disposable runtime contract only. It does not yet provision Docker, a VM, a managed database, or a cloud network.
 
 ## Demo reset
 

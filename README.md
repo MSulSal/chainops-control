@@ -20,6 +20,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - A reproducible demo-reset workflow that restores seeded pending, approved, rejected, and failed-ingestion cases for smoke tests and interview walkthroughs.
 - A repo-native smoke harness plus GitHub Actions CI that resets the seeded demo scenario, exports canonical incident evidence, and verifies stable traces before release.
 - A container-first runtime smoke path that boots the API against PostgreSQL, checks `/health` and `/ready`, and reruns the seeded incident flow over the live HTTP boundary.
+- A minimal Terraform sandbox contract that validates the current API/PostgreSQL/runtime boundary and emits disposable operator commands without claiming paid or managed infrastructure.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -38,6 +39,18 @@ npm run smoke:demo
 npm run smoke:runtime
 npm start
 npm run start:web
+```
+
+Optional Terraform contract review:
+
+```powershell
+cd infra/terraform/sandbox
+Copy-Item terraform.tfvars.example terraform.tfvars
+terraform init
+terraform plan
+terraform apply -auto-approve
+terraform output -json sandbox_manifest
+terraform destroy -auto-approve
 ```
 
 The service listens on `http://127.0.0.1:4317`.
@@ -82,9 +95,9 @@ Example approval body:
 
 ## Roadmap
 
-1. Add a minimal Terraform sandbox and deployment notes for disposable environments.
-2. Add lightweight telemetry export or collector notes only after the Terraform sandbox documents the runtime boundary.
-3. Add container release/version notes only after the sandbox path proves stable enough to describe deploy/rollback steps truthfully.
+1. Add lightweight telemetry export or collector notes only after the Terraform sandbox documents the runtime boundary.
+2. Add container release/version notes only after the sandbox path proves stable enough to describe deploy/rollback steps truthfully.
+3. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
 
 ## Boundaries
 

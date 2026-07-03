@@ -1,0 +1,10 @@
+sandbox_name         = "chainops-local-sandbox"
+compose_project_name = "chainops-sandbox"
+api_host             = "127.0.0.1"
+api_port             = 4317
+reviewer_port        = 3000
+database_url         = "postgres://chainops:chainops@127.0.0.1:5432/chainops"
+api_image            = "chainops-control:local"
+postgres_image       = "postgres:16-alpine"
+etherscan_base_url   = null
+seed_demo_on_boot    = true

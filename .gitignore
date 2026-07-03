@@ -5,3 +5,7 @@ data/*.json
 .env
 .env.*
 coverage/
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars

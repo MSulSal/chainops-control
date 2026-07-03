@@ -51,6 +51,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 
 - Refresh: images/layers, Compose networking, health checks, Terraform state/plan/apply/modules, and environment boundaries.
 - Apply: repeatable local stack, container CI, and a minimal disposable infrastructure plan.
+- Applied in slice 14: a provider-free Terraform sandbox now validates the current API/PostgreSQL/runtime inputs and emits reviewed operator outputs, which is a useful pattern when infrastructure evidence needs to stay truthful to a still-local container boundary.
 - Docs: https://docs.docker.com/get-started/ | https://developer.hashicorp.com/terraform/docs
 
 ## Observability and CI/CD
@@ -61,6 +62,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 11: seeded trace IDs and resettable incident evidence make it easier to rehearse rollback and failure-analysis stories without claiming external telemetry ownership.
 - Applied in slice 12: GitHub Actions now runs the seeded smoke harness alongside `npm test` and `npm run build:web`, which turns trace-backed incident evidence into a release gate instead of an informal manual check.
 - Applied in slice 13: the runtime smoke script now polls `/health` and `/ready` before reusing the same seeded demo/export assertions against the live Docker Compose API, which is a practical pattern for proving startup ordering and runtime contracts without introducing a broader deployment target yet.
+- Applied in slice 14: the Terraform sandbox reuses those same health/readiness, demo-reset, and smoke commands as IaC outputs, which is a good reminder that deployment/runbook evidence should point back to the tested runtime contract instead of diverging into a separate undocumented path.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
@@ -81,3 +83,4 @@ Be able to explain:
 11. Why keep release and rollback guidance as computed product behavior inside the existing API/UI contract instead of introducing a separate incident tool?
 12. Why export incident evidence from the same queue and case APIs instead of rebuilding the artifact in the browser?
 13. Why reset the seeded demo dataset through the same PostgreSQL tables and API boundary instead of keeping a separate fixture-only demo mode?
+14. Why keep the first Terraform slice provider-free instead of forcing a Docker or cloud target that cannot be validated honestly on this host?

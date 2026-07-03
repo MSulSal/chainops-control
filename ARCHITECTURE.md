@@ -82,6 +82,10 @@ The next release-evidence step stays inside the repository and the existing HTTP
 
 The next runtime-evidence step keeps using the same seeded smoke assertions, but now points them at the real containerized API instead of only an in-process test server. A dedicated runtime smoke script polls `/health` and `/ready`, then reruns the seeded demo/export flow against `docker compose` infrastructure in CI. That keeps the slice bounded to one service plus PostgreSQL while proving the Docker entrypoint, startup ordering, and readiness contract before adding Terraform or a larger deployment surface.
 
+## 2026-07-03 terraform-sandbox decision
+
+The first Terraform slice stays provider-free on purpose. It captures the current API, PostgreSQL, reviewer workspace, health/readiness, seeded demo reset, and smoke-command contract as validated Terraform inputs and outputs, then stores that reviewed manifest in Terraform state through `terraform_data` instead of pretending a paid or managed runtime already exists. That keeps the infrastructure layer honest to the current product boundary, gives the repo a real IaC surface for interview discussion, and leaves provider-backed Docker or cloud targets for a later host that can actually run Terraform plus the target runtime.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

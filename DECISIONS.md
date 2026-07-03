@@ -48,3 +48,7 @@ The demo-reset path rewrites the same `cases`, `transactions`, and `audit_events
 ## Seeded smoke harness tradeoff
 
 The first release gate for seeded incident evidence runs the service in-process through the same HTTP endpoints instead of standing up Docker, browsers, or external telemetry first. That keeps CI fast and reviewable while still proving that demo reset plus workspace/case exports remain stable across repeated runs. The next step is to rerun the same path against the runtime entrypoint so container startup and health/readiness behavior become visible too.
+
+## Terraform sandbox tradeoff
+
+The first Terraform slice uses only validated inputs, computed locals, outputs, and `terraform_data` state instead of a provider-backed Docker or cloud target. That is intentionally conservative: this host cannot currently validate Terraform CLI plus a real runtime target, and the product still has no truthful managed-environment story. Capturing the reviewed runtime contract in Terraform now is still useful because it proves variable validation, deployment-shape thinking, and operator handoff without inventing infrastructure behavior that the repository cannot yet test.
