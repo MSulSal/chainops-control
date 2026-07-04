@@ -15,6 +15,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 12: a dedicated smoke harness now boots the service, resets the seeded scenario, and asserts stable export evidence over HTTP, which is a useful pattern for proving release readiness without reaching for external test infrastructure too early.
 - Applied in slice 16: the same seeded smoke path now also validates a bounded release record artifact, which is a useful reminder that release notes are more trustworthy when they are generated from the same runtime evidence already used for incident and telemetry exports.
 - Applied in slice 17: the reviewer workspace now links to a local OpenTelemetry-shaped export seam, which is a useful pattern for surfacing observability evidence without introducing a second client-only model or pretending a collector already exists.
+- Applied in slice 18: the live runtime smoke path now compares telemetry, OpenTelemetry, and release-record exports against the current seeded parity contract, which is a useful pattern for catching stale container drift before a release artifact is treated as current.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -30,6 +31,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 15: a telemetry handoff artifact can stay honest by exporting the existing health/readiness, smoke, trace, and audit-ledger evidence first, then leaving collector plumbing as documented next-step work instead of pretending the stack already exists.
 - Applied in slice 16: a release-record endpoint can stay reviewable by packaging existing queue guidance, smoke commands, and rollback evidence instead of inventing a deployment API or external release service.
 - Applied in slice 17: a local OpenTelemetry export can stay honest by deriving spans and metrics from the existing audit ledger, then making collector wiring an explicit later concern instead of a hidden assumption.
+- Applied in slice 18: runtime parity checks stay reviewable when they normalize only the explicitly documented time-relative fields instead of hiding broad snapshot differences.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL
@@ -73,6 +75,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 15: the telemetry handoff export reuses the same runtime contract plus persisted timing metrics, which is a useful pattern for observability planning when the honest answer is still "collector not provisioned yet."
 - Applied in slice 16: package-version release notes stay bounded when they point back to `npm test`, both smoke commands, and the same trace-backed rollback evidence instead of claiming that a deployment pipeline or hosted release target already exists.
 - Applied in slice 17: OpenTelemetry-shaped spans and metrics are more defensible when they point back to persisted audit timestamps and queue analytics than when they duplicate timers or invent a collector on an unvalidated host.
+- Applied in slice 18: a stale runtime should fail on missing or drifting exports before it fails in front of a reviewer, which is why the runtime smoke path now checks the telemetry and release artifacts directly.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks

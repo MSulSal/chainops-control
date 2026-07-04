@@ -187,6 +187,11 @@ export type ReleaseRecordSnapshot = {
       name: string;
       expectedTraceIds: string[];
     };
+    runtimeParity: {
+      comparedExports: string[];
+      ignoredFields: string[];
+      failureMode: string;
+    };
   };
   evidence: {
     summary: CaseQueueSummary;
@@ -418,6 +423,23 @@ export function buildReleaseRecordSnapshot(input: {
           "trace-demo-pending-high",
           "trace-demo-approved-low"
         ]
+      },
+      runtimeParity: {
+        comparedExports: [
+          "/exports/telemetry",
+          "/exports/telemetry/opentelemetry",
+          "/exports/releases/latest"
+        ],
+        ignoredFields: [
+          "generatedAt",
+          "queueEvidence.analytics.reviewLatency.oldestPendingHours",
+          "queueEvidence.releaseGuide.evidence[*] old pending-review age text",
+          "evidence.analytics.reviewLatency.oldestPendingHours",
+          "evidence.releaseGuide.evidence[*] old pending-review age text",
+          "rollback.evidence[*] old pending-review age text"
+        ],
+        failureMode:
+          "Treat the runtime as stale when any required export is missing or diverges from the current seeded parity contract after normalizing the documented time-relative fields."
       }
     },
     evidence: {

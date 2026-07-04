@@ -33,6 +33,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 15: implemented a telemetry handoff export that packages the current health/readiness contract, seeded smoke commands, persisted timing evidence, trace samples, and bounded collector notes for observability planning.
 - Slice 16: implemented a latest-release record export that packages the current package version, container runtime contract, smoke/build commands, telemetry links, and rollback evidence into one bounded release artifact.
 - Slice 17: implemented a bounded OpenTelemetry export seam that turns persisted trace IDs and audit-event timings into local spans plus aggregate metrics without claiming OTLP emission or an external backend.
+- Slice 18: implemented a runtime-parity release gate in the live smoke path so `/exports/telemetry`, `/exports/telemetry/opentelemetry`, and `/exports/releases/latest` must match the current seeded parity contract before the container runtime is treated as current.
 
 ## Success evidence
 

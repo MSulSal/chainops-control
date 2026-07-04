@@ -80,6 +80,8 @@ Expected result:
 
 - The command waits for `GET /health` and `GET /ready` to pass against the running API container before exercising the seeded workflow.
 - The same seeded export assertions from `npm run smoke:demo` pass through the live HTTP boundary backed by Docker Compose PostgreSQL.
+- The command compares `/exports/telemetry`, `/exports/telemetry/opentelemetry`, and `/exports/releases/latest` against the current seeded parity contract after normalizing only the documented time-relative fields.
+- If any required export is missing or diverges from that contract, treat the runtime as stale and do not treat the release record as current.
 - If startup or readiness stalls, the command fails with the last observed health/readiness error so runtime ordering problems are visible in CI.
 
 ## Terraform sandbox
@@ -163,6 +165,7 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - The telemetry handoff export is an operator and planning artifact only. It does not emit OTLP traffic, scrape metrics, or provision observability infrastructure on its own.
 - The OpenTelemetry export is also a bounded local artifact only. It reuses stored audit evidence to shape spans and metrics, but it does not send telemetry to a collector or backend.
 - The latest release record is a bounded handoff artifact only. It does not publish a deployment, mutate infrastructure, or claim a managed release target.
+- Runtime parity is also bounded to the local seeded contract. It proves that the current container matches the shipped export surface; it does not prove a hosted deployment target.
 - Release and rollback guidance are operational playbooks derived from queue and case evidence; they do not trigger deployment changes automatically.
 - GitHub Actions now proves the repo-native test path, the in-process seeded smoke path, the containerized API health/readiness path, and the live seeded runtime smoke path before the Next.js build. It still does not cover a separate worker, managed database, or paid deployment target.
 - The Terraform sandbox currently models and validates the disposable runtime contract only. It does not yet provision Docker, a VM, a managed database, or a cloud network.

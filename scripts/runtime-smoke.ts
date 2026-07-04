@@ -41,7 +41,7 @@ async function main() {
 
   const result = await runSeededDemoSmokeTest(baseUrl);
   console.log(
-    `runtime smoke passed: ${result.scenario} | failed case ${result.failedCaseId} | traces ${result.traceIds.join(", ")}`
+    `runtime parity gate passed: ${result.scenario} | failed case ${result.failedCaseId} | traces ${result.traceIds.join(", ")}`
   );
 }
 

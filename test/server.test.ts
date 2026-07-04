@@ -637,6 +637,12 @@ test("exports a latest release record artifact from the current filtered queue",
   assert.equal(snapshot.release.channel, "local_container_runtime");
   assert.equal(snapshot.verification.endpoints.releaseRecordPath, "/exports/releases/latest");
   assert.equal(snapshot.verification.endpoints.openTelemetryExportPath, "/exports/telemetry/opentelemetry");
+  assert.deepEqual(snapshot.verification.runtimeParity.comparedExports, [
+    "/exports/telemetry",
+    "/exports/telemetry/opentelemetry",
+    "/exports/releases/latest"
+  ]);
+  assert.match(snapshot.verification.runtimeParity.failureMode, /runtime as stale/i);
   assert.equal(snapshot.verification.requiredCommands.length, 4);
   assert.equal(snapshot.evidence.summary.failedIngestionCount, 1);
   assert.equal(snapshot.evidence.focusTraceId, "trace-release-record-timeout");

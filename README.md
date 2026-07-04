@@ -24,6 +24,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - A telemetry handoff export that packages health/readiness paths, seeded smoke commands, persisted timing evidence, trace samples, and bounded collector notes without claiming an external observability stack.
 - A bounded OpenTelemetry export seam that maps existing trace IDs and persisted audit-event timings into local spans and aggregate metrics without claiming a collector or backend.
 - A latest-release export that packages the current package version, container runtime contract, smoke/build commands, telemetry links, and rollback evidence into one bounded release record.
+- A runtime-parity release gate in `npm run smoke:runtime` that treats the live container as stale when `/exports/telemetry`, `/exports/telemetry/opentelemetry`, or `/exports/releases/latest` diverge from the current seeded parity contract outside documented time-relative fields.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -101,7 +102,7 @@ Example approval body:
 
 ## Roadmap
 
-1. Add a runtime-parity release gate that compares the live container export surface against the latest seeded telemetry and release artifacts before claiming the runtime is current.
+1. Surface the last runtime-parity result in the reviewer workspace and release record so stale-container evidence is visible without rerunning the smoke script manually.
 2. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
 3. Add a real collector or trace backend only after a provider-backed runtime exists to host and validate it truthfully.
 

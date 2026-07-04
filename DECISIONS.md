@@ -57,6 +57,10 @@ The first observability-facing artifact exports the current runtime contract and
 
 The next slice exports OpenTelemetry-shaped spans and metrics as a local JSON artifact instead of wiring a real SDK, collector, or backend on an unvalidated host. That keeps the runtime story honest while still demonstrating how existing trace IDs, stage timings, and queue aggregates can map into collector-ready structures. The tradeoff is that this slice proves the contract and mapping discipline, not live telemetry delivery.
 
+## Runtime parity gate tradeoff
+
+The next release gate reuses the seeded smoke contract and compares the live telemetry, OpenTelemetry, and release-record exports directly instead of inventing a second release-verification service. That keeps stale container drift visible at the same HTTP boundary reviewers already use, and it stays honest by normalizing only documented time-relative fields. The tradeoff is that parity remains a local runtime proof rather than a hosted-deployment guarantee.
+
 ## Terraform sandbox tradeoff
 
 The first Terraform slice uses only validated inputs, computed locals, outputs, and `terraform_data` state instead of a provider-backed Docker or cloud target. That is intentionally conservative: this host cannot currently validate Terraform CLI plus a real runtime target, and the product still has no truthful managed-environment story. Capturing the reviewed runtime contract in Terraform now is still useful because it proves variable validation, deployment-shape thinking, and operator handoff without inventing infrastructure behavior that the repository cannot yet test.

@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import type { CaseIncidentSnapshot, ReleaseRecordSnapshot, WorkspaceIncidentSnapshot } from "./incident-snapshot.ts";
+import type {
+  CaseIncidentSnapshot,
+  OpenTelemetryExportSnapshot,
+  ReleaseRecordSnapshot,
+  TelemetryHandoffSnapshot,
+  WorkspaceIncidentSnapshot
+} from "./incident-snapshot.ts";
 import { DEMO_SCENARIO_NAME } from "./demo-scenario.ts";
 
 type DemoResetResponse = {
@@ -45,6 +51,39 @@ export async function runSeededDemoSmokeTest(
   assert.equal(firstCaseSnapshot.stageTrace[1]?.statusLabel, "Failed");
   assert.match(firstCaseSnapshot.providerSummary, /error timeout/);
 
+  const firstTelemetryHandoff = await fetchImpl(`${baseUrl}/exports/telemetry`);
+  assert.equal(firstTelemetryHandoff.status, 200);
+  const firstTelemetryHandoffSnapshot = (await firstTelemetryHandoff.json()) as TelemetryHandoffSnapshot;
+  assert.equal(firstTelemetryHandoffSnapshot.scope, "telemetry_handoff");
+  assert.equal(firstTelemetryHandoffSnapshot.service.api.healthPath, "/health");
+  assert.equal(firstTelemetryHandoffSnapshot.service.api.releaseRecordPath, "/exports/releases/latest");
+  assert.deepEqual(firstTelemetryHandoffSnapshot.seededDemo.expectedTraceIds, [
+    "trace-demo-provider-timeout",
+    "trace-demo-pending-high",
+    "trace-demo-approved-low"
+  ]);
+  assert.equal(firstTelemetryHandoffSnapshot.queueEvidence.summary.total, 4);
+  assert.ok(
+    firstTelemetryHandoffSnapshot.queueEvidence.traceSamples.some(
+      (traceSample) => traceSample.traceId === "trace-demo-provider-timeout"
+    )
+  );
+
+  const firstOpenTelemetryExport = await fetchImpl(`${baseUrl}/exports/telemetry/opentelemetry`);
+  assert.equal(firstOpenTelemetryExport.status, 200);
+  const firstOpenTelemetryExportSnapshot = (await firstOpenTelemetryExport.json()) as OpenTelemetryExportSnapshot;
+  assert.equal(firstOpenTelemetryExportSnapshot.scope, "opentelemetry_export");
+  assert.equal(firstOpenTelemetryExportSnapshot.resource.serviceName, "chainops-control");
+  assert.equal(firstOpenTelemetryExportSnapshot.links.releaseRecordPath, "/exports/releases/latest");
+  assert.equal(
+    firstOpenTelemetryExportSnapshot.traces.some((trace) => trace.traceId === "trace-demo-provider-timeout"),
+    true
+  );
+  assert.equal(
+    firstOpenTelemetryExportSnapshot.metrics.some((metric) => metric.name === "chainops.provider_fetch.duration"),
+    true
+  );
+
   const firstReleaseRecord = await fetchImpl(`${baseUrl}/exports/releases/latest`);
   assert.equal(firstReleaseRecord.status, 200);
   const firstReleaseRecordSnapshot = (await firstReleaseRecord.json()) as ReleaseRecordSnapshot;
@@ -52,6 +91,11 @@ export async function runSeededDemoSmokeTest(
   assert.equal(firstReleaseRecordSnapshot.release.statusLabel, "Hold");
   assert.equal(firstReleaseRecordSnapshot.verification.endpoints.releaseRecordPath, "/exports/releases/latest");
   assert.equal(firstReleaseRecordSnapshot.evidence.focusTraceId, "trace-demo-provider-timeout");
+  assert.deepEqual(firstReleaseRecordSnapshot.verification.runtimeParity.comparedExports, [
+    "/exports/telemetry",
+    "/exports/telemetry/opentelemetry",
+    "/exports/releases/latest"
+  ]);
 
   await fetchImpl(`${baseUrl}/cases`, {
     method: "POST",
@@ -75,6 +119,12 @@ export async function runSeededDemoSmokeTest(
   const secondCase = await fetchImpl(`${baseUrl}/exports/cases/${failedCaseId}`);
   assert.equal(secondCase.status, 200);
   const secondCaseSnapshot = (await secondCase.json()) as CaseIncidentSnapshot;
+  const secondTelemetryHandoff = await fetchImpl(`${baseUrl}/exports/telemetry`);
+  assert.equal(secondTelemetryHandoff.status, 200);
+  const secondTelemetryHandoffSnapshot = (await secondTelemetryHandoff.json()) as TelemetryHandoffSnapshot;
+  const secondOpenTelemetryExport = await fetchImpl(`${baseUrl}/exports/telemetry/opentelemetry`);
+  assert.equal(secondOpenTelemetryExport.status, 200);
+  const secondOpenTelemetryExportSnapshot = (await secondOpenTelemetryExport.json()) as OpenTelemetryExportSnapshot;
   const secondReleaseRecord = await fetchImpl(`${baseUrl}/exports/releases/latest`);
   assert.equal(secondReleaseRecord.status, 200);
   const secondReleaseRecordSnapshot = (await secondReleaseRecord.json()) as ReleaseRecordSnapshot;
@@ -92,6 +142,14 @@ export async function runSeededDemoSmokeTest(
   assert.deepEqual(
     normalizeReleaseRecordSnapshot(firstReleaseRecordSnapshot),
     normalizeReleaseRecordSnapshot(secondReleaseRecordSnapshot)
+  );
+  assert.deepEqual(
+    normalizeTelemetryHandoffSnapshot(firstTelemetryHandoffSnapshot),
+    normalizeTelemetryHandoffSnapshot(secondTelemetryHandoffSnapshot)
+  );
+  assert.deepEqual(
+    normalizeOpenTelemetryExportSnapshot(firstOpenTelemetryExportSnapshot),
+    normalizeOpenTelemetryExportSnapshot(secondOpenTelemetryExportSnapshot)
   );
 
   return {
@@ -154,5 +212,35 @@ function normalizeReleaseRecordSnapshot(snapshot: ReleaseRecordSnapshot) {
         item.startsWith("Oldest pending review age: ") ? "Oldest pending review age: <ignored> hours." : item
       )
     }
+  };
+}
+
+function normalizeTelemetryHandoffSnapshot(snapshot: TelemetryHandoffSnapshot) {
+  return {
+    ...snapshot,
+    generatedAt: "<ignored>",
+    queueEvidence: {
+      ...snapshot.queueEvidence,
+      analytics: {
+        ...snapshot.queueEvidence.analytics,
+        reviewLatency: {
+          ...snapshot.queueEvidence.analytics.reviewLatency,
+          oldestPendingHours: "<ignored>"
+        }
+      },
+      releaseGuide: {
+        ...snapshot.queueEvidence.releaseGuide,
+        evidence: snapshot.queueEvidence.releaseGuide.evidence.map((item) =>
+          item.startsWith("Oldest pending review age: ") ? "Oldest pending review age: <ignored> hours." : item
+        )
+      }
+    }
+  };
+}
+
+function normalizeOpenTelemetryExportSnapshot(snapshot: OpenTelemetryExportSnapshot) {
+  return {
+    ...snapshot,
+    generatedAt: "<ignored>"
   };
 }
