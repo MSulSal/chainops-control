@@ -67,6 +67,19 @@ Expected result:
 - The JSON artifact includes the current `package.json` version, the local container runtime channel, and the same queue-level release status currently visible in the reviewer workspace.
 - The record lists the release-check commands `npm test`, `npm run smoke:demo`, `npm run smoke:runtime`, and `npm run build:web`.
 - The artifact points back to `/exports/telemetry`, `/exports/workspace`, and a focus case export so rollback drills stay attached to the same runtime evidence instead of a separate manual note.
+- The record now also embeds the most recent persisted runtime-parity result when one exists, including the checked base URL, export-path statuses, and latest failure summary.
+
+Latest runtime-parity artifact:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:4317/exports/runtime-parity/latest -OutFile runtime-parity-latest.json
+```
+
+Expected result:
+
+- The JSON artifact returns the latest pass/fail result written by `npm run smoke:runtime`.
+- It includes the checked base URL, the compared export paths, the ignored time-relative fields, and a per-export status summary.
+- A failed result should be treated as stale-runtime evidence until a later `npm run smoke:runtime` pass replaces it.
 
 Container/runtime smoke command:
 
@@ -83,6 +96,7 @@ Expected result:
 - The command compares `/exports/telemetry`, `/exports/telemetry/opentelemetry`, and `/exports/releases/latest` against the current seeded parity contract after normalizing only the documented time-relative fields.
 - If any required export is missing or diverges from that contract, treat the runtime as stale and do not treat the release record as current.
 - If startup or readiness stalls, the command fails with the last observed health/readiness error so runtime ordering problems are visible in CI.
+- The command writes its latest pass/fail result to `data/runtime-parity/latest.json`, which the reviewer workspace and release record reuse directly.
 
 ## Terraform sandbox
 
@@ -139,6 +153,8 @@ Expected result:
 15. Use `Export telemetry handoff` from the workspace and confirm the JSON includes the health/readiness paths, smoke commands, queue evidence, trace samples, and bounded collector notes.
 16. Use `Export OpenTelemetry seam` from the workspace and confirm the JSON includes deterministic hex trace/span IDs, local spans for each recorded workflow stage, aggregate metrics, and explicit no-collector boundaries.
 17. Use `Export latest release record` from the workspace and confirm the JSON includes the current version, the required verification commands, and rollback evidence tied to a visible trace or case export.
+18. Confirm the release record section shows the last runtime parity result, including pass/fail status, checked base URL, and per-export evidence.
+19. Use `Export latest runtime parity` when available and confirm the JSON matches the pass/fail summary shown in the release record section.
 
 ## Human approval
 
@@ -165,6 +181,7 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - The telemetry handoff export is an operator and planning artifact only. It does not emit OTLP traffic, scrape metrics, or provision observability infrastructure on its own.
 - The OpenTelemetry export is also a bounded local artifact only. It reuses stored audit evidence to shape spans and metrics, but it does not send telemetry to a collector or backend.
 - The latest release record is a bounded handoff artifact only. It does not publish a deployment, mutate infrastructure, or claim a managed release target.
+- The persisted runtime-parity artifact is also bounded to local evidence only. It records the last smoke result on disk, but it does not prove a hosted deployment target or continuous monitor.
 - Runtime parity is also bounded to the local seeded contract. It proves that the current container matches the shipped export surface; it does not prove a hosted deployment target.
 - Release and rollback guidance are operational playbooks derived from queue and case evidence; they do not trigger deployment changes automatically.
 - GitHub Actions now proves the repo-native test path, the in-process seeded smoke path, the containerized API health/readiness path, and the live seeded runtime smoke path before the Next.js build. It still does not cover a separate worker, managed database, or paid deployment target.

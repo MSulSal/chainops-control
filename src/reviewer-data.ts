@@ -49,6 +49,24 @@ export type DemoResetResponse = {
   notes: string[];
 };
 
+export type RuntimeParityResult = {
+  checkedAt: string;
+  baseUrl: string;
+  status: "passed" | "failed";
+  summary: string;
+  comparedExports: string[];
+  ignoredFields: string[];
+  exportChecks: Array<{
+    path: string;
+    status: "matched" | "missing" | "diverged" | "not_checked";
+    detail: string;
+  }>;
+  scenario?: string;
+  failedCaseId?: string;
+  traceIds?: string[];
+  error?: string;
+};
+
 export async function fetchCaseSummaries(filters: ReviewerWorkspaceFilters = {}): Promise<CaseListResponse> {
   const response = await fetch(`${getApiBaseUrl()}/cases?${buildCaseListQuery(filters)}`, {
     cache: "no-store"
@@ -119,6 +137,22 @@ export async function resetDemoScenario(): Promise<DemoResetResponse> {
   return (await response.json()) as DemoResetResponse;
 }
 
+export async function fetchLatestRuntimeParityResult(): Promise<RuntimeParityResult | null> {
+  const response = await fetch(`${getApiBaseUrl()}/exports/runtime-parity/latest`, {
+    cache: "no-store"
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`failed to load runtime parity result: ${response.status}`);
+  }
+
+  return (await response.json()) as RuntimeParityResult;
+}
+
 export function getWorkspaceSnapshotUrl(filters: ReviewerWorkspaceFilters = {}): string {
   const query = buildCaseListQuery(filters);
   return `${getApiBaseUrl()}/exports/workspace${query ? `?${query}` : ""}`;
@@ -137,6 +171,10 @@ export function getOpenTelemetryExportUrl(filters: ReviewerWorkspaceFilters = {}
 export function getLatestReleaseRecordUrl(filters: ReviewerWorkspaceFilters = {}): string {
   const query = buildCaseListQuery(filters);
   return `${getApiBaseUrl()}/exports/releases/latest${query ? `?${query}` : ""}`;
+}
+
+export function getLatestRuntimeParityUrl(): string {
+  return `${getApiBaseUrl()}/exports/runtime-parity/latest`;
 }
 
 export function getCaseSnapshotUrl(caseId: string): string {

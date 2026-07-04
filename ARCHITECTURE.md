@@ -102,6 +102,10 @@ The next observability slice still avoids standing up a collector. `GET /exports
 
 The next release gate stays inside the seeded smoke boundary instead of adding a second release service. `npm run smoke:runtime` now treats the live container runtime as stale when `/exports/telemetry`, `/exports/telemetry/opentelemetry`, or `/exports/releases/latest` diverge from the current seeded parity contract after normalizing only the documented time-relative fields. That keeps runtime drift visible through the same HTTP surface the reviewer workspace already depends on, while avoiding a separate parity database, hidden fixture bypass, or managed deployment claim.
 
+## 2026-07-04 persisted parity-result decision
+
+The next release-evidence step still stays local and bounded: the runtime smoke script now writes its latest pass/fail result to `data/runtime-parity/latest.json`, the API serves that artifact at `GET /exports/runtime-parity/latest`, and the release record embeds the same object. That keeps stale-runtime evidence visible to reviewers even when the failing container is not being rechecked live, while still avoiding a second persistence store, background agent, or managed deployment claim.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

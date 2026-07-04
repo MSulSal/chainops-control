@@ -16,6 +16,7 @@ import {
   getProviderSummary,
   getWorkspaceOperationalGuide
 } from "./reviewer-view.ts";
+import type { RuntimeParityResult } from "./runtime-parity.ts";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json") as { version: string };
@@ -191,6 +192,7 @@ export type ReleaseRecordSnapshot = {
       comparedExports: string[];
       ignoredFields: string[];
       failureMode: string;
+      lastResult: RuntimeParityResult | null;
     };
   };
   evidence: {
@@ -362,6 +364,7 @@ export function buildReleaseRecordSnapshot(input: {
   summary: CaseQueueSummary;
   analytics: CaseQueueAnalytics;
   cases: CaseSummary[];
+  lastRuntimeParityResult?: RuntimeParityResult | null;
 }): ReleaseRecordSnapshot {
   const releaseGuide = getWorkspaceOperationalGuide(input.summary, input.analytics);
   const focusCase =
@@ -439,7 +442,8 @@ export function buildReleaseRecordSnapshot(input: {
           "rollback.evidence[*] old pending-review age text"
         ],
         failureMode:
-          "Treat the runtime as stale when any required export is missing or diverges from the current seeded parity contract after normalizing the documented time-relative fields."
+          "Treat the runtime as stale when any required export is missing or diverges from the current seeded parity contract after normalizing the documented time-relative fields.",
+        lastResult: input.lastRuntimeParityResult ?? null
       }
     },
     evidence: {

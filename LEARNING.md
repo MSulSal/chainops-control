@@ -16,6 +16,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 16: the same seeded smoke path now also validates a bounded release record artifact, which is a useful reminder that release notes are more trustworthy when they are generated from the same runtime evidence already used for incident and telemetry exports.
 - Applied in slice 17: the reviewer workspace now links to a local OpenTelemetry-shaped export seam, which is a useful pattern for surfacing observability evidence without introducing a second client-only model or pretending a collector already exists.
 - Applied in slice 18: the live runtime smoke path now compares telemetry, OpenTelemetry, and release-record exports against the current seeded parity contract, which is a useful pattern for catching stale container drift before a release artifact is treated as current.
+- Applied in slice 19: the runtime smoke path now persists its latest pass/fail result as a local artifact and the API/UI read that same artifact back, which is a useful pattern for surfacing CI or operator evidence without inventing a second database table for ephemeral release checks.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -32,6 +33,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 16: a release-record endpoint can stay reviewable by packaging existing queue guidance, smoke commands, and rollback evidence instead of inventing a deployment API or external release service.
 - Applied in slice 17: a local OpenTelemetry export can stay honest by deriving spans and metrics from the existing audit ledger, then making collector wiring an explicit later concern instead of a hidden assumption.
 - Applied in slice 18: runtime parity checks stay reviewable when they normalize only the explicitly documented time-relative fields instead of hiding broad snapshot differences.
+- Applied in slice 19: release evidence stays explainable when the smoke script writes a structured artifact with checked export paths, ignored fields, and the exact failure summary instead of leaving parity results trapped in console output.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL
@@ -76,6 +78,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 16: package-version release notes stay bounded when they point back to `npm test`, both smoke commands, and the same trace-backed rollback evidence instead of claiming that a deployment pipeline or hosted release target already exists.
 - Applied in slice 17: OpenTelemetry-shaped spans and metrics are more defensible when they point back to persisted audit timestamps and queue analytics than when they duplicate timers or invent a collector on an unvalidated host.
 - Applied in slice 18: a stale runtime should fail on missing or drifting exports before it fails in front of a reviewer, which is why the runtime smoke path now checks the telemetry and release artifacts directly.
+- Applied in slice 19: a parity gate is easier to operate when its last result is persisted and queryable through the same API/reviewer surface, because release reviewers can see stale-runtime evidence even when they are not the ones who ran the smoke command.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
@@ -98,3 +101,4 @@ Be able to explain:
 13. Why reset the seeded demo dataset through the same PostgreSQL tables and API boundary instead of keeping a separate fixture-only demo mode?
 14. Why keep the first Terraform slice provider-free instead of forcing a Docker or cloud target that cannot be validated honestly on this host?
 15. Why export a local OpenTelemetry-shaped artifact before adding SDK instrumentation or a collector?
+16. Why persist the last runtime-parity result as an artifact instead of leaving it only in console logs?

@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import type { CaseStatus, RiskLevel } from "../src/domain.ts";
 import {
   fetchCaseSummaries,
+  fetchLatestRuntimeParityResult,
   getLatestReleaseRecordUrl,
+  getLatestRuntimeParityUrl,
   getOpenTelemetryExportUrl,
   getTelemetryHandoffUrl,
   getWorkspaceSnapshotUrl,
@@ -48,6 +50,8 @@ export default async function ReviewerWorkspacePage({
   const telemetryHandoffUrl = getTelemetryHandoffUrl(initialFilters);
   const openTelemetryExportUrl = getOpenTelemetryExportUrl(initialFilters);
   const releaseRecordUrl = getLatestReleaseRecordUrl(initialFilters);
+  const runtimeParityUrl = getLatestRuntimeParityUrl();
+  const runtimeParityResult = await fetchLatestRuntimeParityResult().catch(() => null);
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -222,11 +226,41 @@ export default async function ReviewerWorkspacePage({
               <strong>Verification contract</strong>
               <span className="mono">npm test | npm run smoke:demo | npm run smoke:runtime | npm run build:web</span>
             </div>
+            <div className="fact">
+              <strong>Last parity check</strong>
+              <span className="muted">
+                {runtimeParityResult
+                  ? `${runtimeParityResult.status.toUpperCase()} at ${formatTimestamp(runtimeParityResult.checkedAt)} against ${runtimeParityResult.baseUrl}`
+                  : "No persisted runtime parity result yet. Run npm run smoke:runtime to capture one."}
+              </span>
+            </div>
           </div>
+          {runtimeParityResult ? (
+            <div className={`callout ${runtimeParityResult.status === "failed" ? "callout-danger" : "callout-success"}`}>
+              <strong>{runtimeParityResult.status === "failed" ? "Stale runtime signal." : "Runtime parity passed."}</strong>{" "}
+              {runtimeParityResult.summary}
+              {runtimeParityResult.error ? ` Latest failure: ${runtimeParityResult.error}` : ""}
+            </div>
+          ) : (
+            <div className="callout callout-info">
+              No runtime parity artifact is stored yet. The release record will stay incomplete until `npm run smoke:runtime` writes one.
+            </div>
+          )}
+          {runtimeParityResult ? (
+            <div className="facts-grid">
+              {runtimeParityResult.exportChecks.map((check) => (
+                <div key={check.path} className="fact">
+                  <strong>{check.path}</strong>
+                  <span className="muted">{`${check.status}: ${check.detail}`}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div className="filter-actions">
             <a href={releaseRecordUrl}>Export latest release record</a>
             <a href={telemetryHandoffUrl}>Export telemetry handoff</a>
             <a href={openTelemetryExportUrl}>Export OpenTelemetry seam</a>
+            {runtimeParityResult ? <a href={runtimeParityUrl}>Export latest runtime parity</a> : null}
           </div>
         </div>
       </section>

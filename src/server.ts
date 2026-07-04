@@ -12,6 +12,7 @@ import {
   buildTelemetryHandoffSnapshot,
   buildWorkspaceIncidentSnapshot
 } from "./incident-snapshot.ts";
+import { readLatestRuntimeParityResult } from "./runtime-parity.ts";
 import { DEMO_SCENARIO_NAME } from "./demo-scenario.ts";
 
 type JsonBody = Record<string, unknown>;
@@ -67,8 +68,20 @@ export function createApp(store: AuditStore) {
 
       if (request.method === "GET" && url.pathname === "/exports/releases/latest") {
         const cases = await store.listCases(readCaseListFilters(url.searchParams));
-        return sendJson(response, 200, buildReleaseRecordSnapshot(cases), {
+        const lastRuntimeParityResult = await readLatestRuntimeParityResult();
+        return sendJson(response, 200, buildReleaseRecordSnapshot({ ...cases, lastRuntimeParityResult }), {
           "content-disposition": 'attachment; filename="latest-release-record.json"'
+        });
+      }
+
+      if (request.method === "GET" && url.pathname === "/exports/runtime-parity/latest") {
+        const lastRuntimeParityResult = await readLatestRuntimeParityResult();
+        if (!lastRuntimeParityResult) {
+          return sendJson(response, 404, { error: "runtime parity result not found", traceId });
+        }
+
+        return sendJson(response, 200, lastRuntimeParityResult, {
+          "content-disposition": 'attachment; filename="runtime-parity-latest.json"'
         });
       }
 

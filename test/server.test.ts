@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { newDb } from "pg-mem";
 import { runSeededDemoSmokeTest } from "../src/demo-smoke.ts";
@@ -623,6 +626,41 @@ test("exports a latest release record artifact from the current filtered queue",
     body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
   });
 
+  const runtimeParityDir = await mkdtemp(path.join(os.tmpdir(), "chainops-runtime-parity-"));
+  process.env.CHAINOPS_RUNTIME_PARITY_PATH = path.join(runtimeParityDir, "latest.json");
+  t.after(() => {
+    delete process.env.CHAINOPS_RUNTIME_PARITY_PATH;
+  });
+  await writeFile(
+    process.env.CHAINOPS_RUNTIME_PARITY_PATH,
+    JSON.stringify({
+      checkedAt: "2026-07-04T18:00:00.000Z",
+      baseUrl: "http://127.0.0.1:4317",
+      status: "failed",
+      summary: "The running service failed the seeded runtime parity gate and should be treated as stale.",
+      comparedExports: ["/exports/telemetry", "/exports/telemetry/opentelemetry", "/exports/releases/latest"],
+      ignoredFields: ["generatedAt"],
+      exportChecks: [
+        {
+          path: "/exports/telemetry",
+          status: "matched",
+          detail: "The runtime served the expected telemetry export."
+        },
+        {
+          path: "/exports/telemetry/opentelemetry",
+          status: "missing",
+          detail: "The runtime returned 404 for the OpenTelemetry export."
+        },
+        {
+          path: "/exports/releases/latest",
+          status: "not_checked",
+          detail: "The seeded runtime flow stopped before this export check."
+        }
+      ],
+      error: "404 Not Found"
+    })
+  );
+
   const response = await fetch(`${baseUrl}/exports/releases/latest?status=ingestion_failed`);
   assert.equal(response.status, 200);
   assert.equal(
@@ -643,10 +681,64 @@ test("exports a latest release record artifact from the current filtered queue",
     "/exports/releases/latest"
   ]);
   assert.match(snapshot.verification.runtimeParity.failureMode, /runtime as stale/i);
+  assert.equal(snapshot.verification.runtimeParity.lastResult?.status, "failed");
+  assert.equal(snapshot.verification.runtimeParity.lastResult?.exportChecks[1]?.status, "missing");
   assert.equal(snapshot.verification.requiredCommands.length, 4);
   assert.equal(snapshot.evidence.summary.failedIngestionCount, 1);
   assert.equal(snapshot.evidence.focusTraceId, "trace-release-record-timeout");
   assert.match(snapshot.rollback.decision, /roll back/i);
+});
+
+test("returns the latest persisted runtime parity result when available", async (t) => {
+  const store = await createTestStore();
+  const app = createApp(store);
+  const runtimeParityDir = await mkdtemp(path.join(os.tmpdir(), "chainops-runtime-parity-"));
+  process.env.CHAINOPS_RUNTIME_PARITY_PATH = path.join(runtimeParityDir, "latest.json");
+
+  await writeFile(
+    process.env.CHAINOPS_RUNTIME_PARITY_PATH,
+    JSON.stringify({
+      checkedAt: "2026-07-04T19:00:00.000Z",
+      baseUrl: "http://127.0.0.1:4317",
+      status: "passed",
+      summary: "The running service matched the current seeded runtime parity contract.",
+      comparedExports: ["/exports/telemetry", "/exports/telemetry/opentelemetry", "/exports/releases/latest"],
+      ignoredFields: ["generatedAt"],
+      exportChecks: [
+        {
+          path: "/exports/telemetry",
+          status: "matched",
+          detail: "The runtime served the expected parity export during the seeded smoke flow."
+        }
+      ],
+      scenario: "incident_review_v1",
+      failedCaseId: "44444444-4444-4444-8444-444444444444",
+      traceIds: ["trace-demo-provider-timeout"]
+    })
+  );
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    delete process.env.CHAINOPS_RUNTIME_PARITY_PATH;
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const response = await fetch(`${baseUrl}/exports/runtime-parity/latest`);
+  assert.equal(response.status, 200);
+  assert.equal(
+    response.headers.get("content-disposition"),
+    'attachment; filename="runtime-parity-latest.json"'
+  );
+
+  const snapshot = await response.json();
+  assert.equal(snapshot.status, "passed");
+  assert.equal(snapshot.scenario, "incident_review_v1");
+  assert.equal(snapshot.exportChecks[0].path, "/exports/telemetry");
 });
 
 test("exports a case incident snapshot with trace-backed guide and audit evidence", async (t) => {

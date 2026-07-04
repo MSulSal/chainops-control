@@ -25,6 +25,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - A bounded OpenTelemetry export seam that maps existing trace IDs and persisted audit-event timings into local spans and aggregate metrics without claiming a collector or backend.
 - A latest-release export that packages the current package version, container runtime contract, smoke/build commands, telemetry links, and rollback evidence into one bounded release record.
 - A runtime-parity release gate in `npm run smoke:runtime` that treats the live container as stale when `/exports/telemetry`, `/exports/telemetry/opentelemetry`, or `/exports/releases/latest` diverge from the current seeded parity contract outside documented time-relative fields.
+- A persisted runtime-parity artifact that records the last `npm run smoke:runtime` pass or fail result so the reviewer workspace and release record can surface stale-container evidence without rerunning the smoke script manually.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -75,6 +76,7 @@ Without `CHAINOPS_ETHERSCAN_BASE_URL`, the service uses a deterministic local fi
 - `GET /exports/telemetry`
 - `GET /exports/telemetry/opentelemetry`
 - `GET /exports/releases/latest`
+- `GET /exports/runtime-parity/latest`
 - `GET /exports/cases/:id`
 
 Example intake body:
@@ -103,8 +105,8 @@ Example approval body:
 ## Roadmap
 
 1. Surface the last runtime-parity result in the reviewer workspace and release record so stale-container evidence is visible without rerunning the smoke script manually.
-2. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
-3. Add a real collector or trace backend only after a provider-backed runtime exists to host and validate it truthfully.
+2. Capture the persisted runtime-parity artifact in CI so release reviewers can download the same stale-runtime evidence from GitHub without rerunning the local smoke path.
+3. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
 
 ## Boundaries
 

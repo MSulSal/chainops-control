@@ -61,6 +61,10 @@ The next slice exports OpenTelemetry-shaped spans and metrics as a local JSON ar
 
 The next release gate reuses the seeded smoke contract and compares the live telemetry, OpenTelemetry, and release-record exports directly instead of inventing a second release-verification service. That keeps stale container drift visible at the same HTTP boundary reviewers already use, and it stays honest by normalizing only documented time-relative fields. The tradeoff is that parity remains a local runtime proof rather than a hosted-deployment guarantee.
 
+## Persisted parity-result tradeoff
+
+The next evidence step persists the last runtime-parity result as a local JSON artifact and serves it back through the same API/reviewer surface instead of inventing a new SQL table or background status service. That keeps stale-runtime evidence visible after a failed smoke run and makes release records easier to review, while keeping the scope bounded to local operator evidence rather than claiming continuous runtime monitoring.
+
 ## Terraform sandbox tradeoff
 
 The first Terraform slice uses only validated inputs, computed locals, outputs, and `terraform_data` state instead of a provider-backed Docker or cloud target. That is intentionally conservative: this host cannot currently validate Terraform CLI plus a real runtime target, and the product still has no truthful managed-environment story. Capturing the reviewed runtime contract in Terraform now is still useful because it proves variable validation, deployment-shape thinking, and operator handoff without inventing infrastructure behavior that the repository cannot yet test.
