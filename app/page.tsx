@@ -5,6 +5,7 @@ import type { CaseStatus, RiskLevel } from "../src/domain.ts";
 import {
   fetchCaseSummaries,
   getLatestReleaseRecordUrl,
+  getOpenTelemetryExportUrl,
   getTelemetryHandoffUrl,
   getWorkspaceSnapshotUrl,
   resetDemoScenario,
@@ -45,6 +46,7 @@ export default async function ReviewerWorkspacePage({
   const timelineBars = getTimelineBars(analytics.timeline);
   const workspaceSnapshotUrl = getWorkspaceSnapshotUrl(initialFilters);
   const telemetryHandoffUrl = getTelemetryHandoffUrl(initialFilters);
+  const openTelemetryExportUrl = getOpenTelemetryExportUrl(initialFilters);
   const releaseRecordUrl = getLatestReleaseRecordUrl(initialFilters);
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
@@ -148,6 +150,7 @@ export default async function ReviewerWorkspacePage({
             <button type="submit">Reset demo dataset</button>
             <a href={workspaceSnapshotUrl}>Export workspace snapshot</a>
             <a href={telemetryHandoffUrl}>Export telemetry handoff</a>
+            <a href={openTelemetryExportUrl}>Export OpenTelemetry seam</a>
             <a href={releaseRecordUrl}>Export latest release record</a>
           </form>
         </div>
@@ -223,6 +226,7 @@ export default async function ReviewerWorkspacePage({
           <div className="filter-actions">
             <a href={releaseRecordUrl}>Export latest release record</a>
             <a href={telemetryHandoffUrl}>Export telemetry handoff</a>
+            <a href={openTelemetryExportUrl}>Export OpenTelemetry seam</a>
           </div>
         </div>
       </section>
@@ -249,6 +253,7 @@ export default async function ReviewerWorkspacePage({
           </div>
           <div className="filter-actions">
             <a href={telemetryHandoffUrl}>Export telemetry handoff</a>
+            <a href={openTelemetryExportUrl}>Export OpenTelemetry seam</a>
           </div>
         </div>
       </section>

@@ -32,6 +32,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 14: implemented a provider-free Terraform sandbox contract under `infra/terraform/sandbox` that validates the current runtime inputs and outputs without claiming paid infrastructure.
 - Slice 15: implemented a telemetry handoff export that packages the current health/readiness contract, seeded smoke commands, persisted timing evidence, trace samples, and bounded collector notes for observability planning.
 - Slice 16: implemented a latest-release record export that packages the current package version, container runtime contract, smoke/build commands, telemetry links, and rollback evidence into one bounded release artifact.
+- Slice 17: implemented a bounded OpenTelemetry export seam that turns persisted trace IDs and audit-event timings into local spans plus aggregate metrics without claiming OTLP emission or an external backend.
 
 ## Success evidence
 
@@ -39,3 +40,4 @@ A human-approved operations workspace for investigating public wallet activity, 
 - CI proves unit, integration, API-contract, and browser paths.
 - A failure demo shows retries without duplicate records.
 - A reviewer workspace connects user action to API, database, trace data, and exportable telemetry handoff artifacts.
+- The API can now export a collector-ready local OpenTelemetry-shaped artifact derived from the same persisted evidence already used in the reviewer workflow.

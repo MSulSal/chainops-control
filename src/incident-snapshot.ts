@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import type {
   AuditEvent,
@@ -59,6 +60,7 @@ export type TelemetryHandoffSnapshot = {
       readyPath: string;
       demoResetPath: string;
       workspaceExportPath: string;
+      openTelemetryExportPath: string;
       releaseRecordPath: string;
     };
     reviewer: {
@@ -102,6 +104,55 @@ export type TelemetryHandoffSnapshot = {
   };
 };
 
+export type OpenTelemetryExportSnapshot = {
+  generatedAt: string;
+  scope: "opentelemetry_export";
+  resource: {
+    serviceName: "chainops-control";
+    serviceVersion: string;
+    deploymentEnvironment: "local";
+    runtimeChannel: "local_container_runtime";
+  };
+  filters: CaseListFilters;
+  summary: CaseQueueSummary;
+  links: {
+    telemetryHandoffPath: string;
+    workspaceSnapshotPath: string;
+    releaseRecordPath: string;
+  };
+  traces: Array<{
+    caseId: string;
+    traceId: string;
+    walletAddress: string;
+    status: CaseRecord["status"];
+    spans: Array<{
+      traceId: string;
+      spanId: string;
+      parentSpanId: string | null;
+      name: string;
+      kind: "internal";
+      startTime: string;
+      endTime: string;
+      status: {
+        code: "OK" | "ERROR" | "UNSET";
+        message?: string;
+      };
+      attributes: Record<string, string | number | boolean>;
+    }>;
+  }>;
+  metrics: Array<{
+    name: string;
+    description: string;
+    unit: "ms" | "1";
+    aggregationTemporality: "cumulative";
+    dataPoints: Array<{
+      attributes: Record<string, string>;
+      value: number;
+    }>;
+  }>;
+  boundaries: string[];
+};
+
 export type ReleaseRecordSnapshot = {
   generatedAt: string;
   scope: "release_record";
@@ -129,6 +180,7 @@ export type ReleaseRecordSnapshot = {
       demoResetPath: string;
       workspaceExportPath: string;
       telemetryExportPath: string;
+      openTelemetryExportPath: string;
       releaseRecordPath: string;
     };
     seededScenario: {
@@ -215,6 +267,7 @@ export function buildTelemetryHandoffSnapshot(input: {
         readyPath: "/ready",
         demoResetPath: "/demo/reset",
         workspaceExportPath: "/exports/workspace",
+        openTelemetryExportPath: "/exports/telemetry/opentelemetry",
         releaseRecordPath: "/exports/releases/latest"
       },
       reviewer: {
@@ -355,6 +408,7 @@ export function buildReleaseRecordSnapshot(input: {
         demoResetPath: "/demo/reset",
         workspaceExportPath: "/exports/workspace",
         telemetryExportPath: "/exports/telemetry",
+        openTelemetryExportPath: "/exports/telemetry/opentelemetry",
         releaseRecordPath: "/exports/releases/latest"
       },
       seededScenario: {
@@ -396,4 +450,204 @@ export function buildReleaseRecordSnapshot(input: {
       "Release and rollback guidance remain operator-facing recommendations derived from persisted case and audit evidence."
     ]
   };
+}
+
+export function buildOpenTelemetryExportSnapshot(input: {
+  generatedAt?: string;
+  filters: CaseListFilters;
+  summary: CaseQueueSummary;
+  analytics: CaseQueueAnalytics;
+  caseDetails: Array<{
+    caseRecord: CaseRecord;
+    auditEvents: AuditEvent[];
+  }>;
+}): OpenTelemetryExportSnapshot {
+  return {
+    generatedAt: input.generatedAt ?? new Date().toISOString(),
+    scope: "opentelemetry_export",
+    resource: {
+      serviceName: "chainops-control",
+      serviceVersion: packageJson.version,
+      deploymentEnvironment: "local",
+      runtimeChannel: "local_container_runtime"
+    },
+    filters: input.filters,
+    summary: input.summary,
+    links: {
+      telemetryHandoffPath: "/exports/telemetry",
+      workspaceSnapshotPath: "/exports/workspace",
+      releaseRecordPath: "/exports/releases/latest"
+    },
+    traces: input.caseDetails.slice(0, 5).map((detail) => ({
+      caseId: detail.caseRecord.id,
+      traceId: detail.caseRecord.traceId,
+      walletAddress: detail.caseRecord.walletAddress,
+      status: detail.caseRecord.status,
+      spans: buildTraceSpans(detail.caseRecord, detail.auditEvents)
+    })),
+    metrics: buildOpenTelemetryMetrics(input.analytics),
+    boundaries: [
+      "This export is a local JSON seam for collector wiring and review; it does not emit OTLP traffic on its own.",
+      "Span timing comes from persisted audit-event durations and timestamps that already power the reviewer workspace.",
+      "No external collector, trace backend, alerting system, or managed deployment target is provisioned by this artifact."
+    ]
+  };
+}
+
+function buildTraceSpans(caseRecord: CaseRecord, auditEvents: AuditEvent[]) {
+  const intakeEvent =
+    findLastAuditEvent(auditEvents, "HUMAN_REVIEW_PENDING") ?? findLastAuditEvent(auditEvents, "PROVIDER_FETCH_FAILED");
+  const providerEvent =
+    findLastAuditEvent(auditEvents, "TRANSACTIONS_INGESTED") ?? findLastAuditEvent(auditEvents, "PROVIDER_FETCH_FAILED");
+  const reviewerEvent =
+    findLastAuditEvent(auditEvents, "HUMAN_APPROVED") ?? findLastAuditEvent(auditEvents, "HUMAN_REJECTED");
+
+  const intakeSpan = intakeEvent
+    ? buildSpan({
+        caseRecord,
+        event: intakeEvent,
+        stage: "intake_pipeline",
+        parentSpanId: null,
+        durationMs:
+          readEventDuration(intakeEvent.details, "durationMs") ?? readEventDuration(intakeEvent.details, "intakeDurationMs"),
+        statusCode: intakeEvent.type === "PROVIDER_FETCH_FAILED" ? "ERROR" : "OK",
+        statusMessage:
+          intakeEvent.type === "PROVIDER_FETCH_FAILED" ? "provider fetch failed before review-ready state" : undefined
+      })
+    : null;
+
+  const providerSpan = providerEvent
+    ? buildSpan({
+        caseRecord,
+        event: providerEvent,
+        stage: "provider_fetch",
+        parentSpanId: intakeSpan?.spanId ?? null,
+        durationMs: readEventDuration(providerEvent.details, "durationMs"),
+        statusCode: providerEvent.type === "PROVIDER_FETCH_FAILED" ? "ERROR" : "OK",
+        statusMessage:
+          providerEvent.type === "PROVIDER_FETCH_FAILED"
+            ? String(providerEvent.details.errorCode ?? "provider fetch failed")
+            : undefined
+      })
+    : null;
+
+  const reviewerSpan = reviewerEvent
+    ? buildSpan({
+        caseRecord,
+        event: reviewerEvent,
+        stage: "reviewer_decision",
+        parentSpanId: providerSpan?.spanId ?? intakeSpan?.spanId ?? null,
+        durationMs: readEventDuration(reviewerEvent.details, "durationMs"),
+        statusCode: "OK"
+      })
+    : null;
+
+  return [intakeSpan, providerSpan, reviewerSpan].filter((value): value is NonNullable<typeof value> => value !== null);
+}
+
+function buildSpan(input: {
+  caseRecord: CaseRecord;
+  event: AuditEvent;
+  stage: "intake_pipeline" | "provider_fetch" | "reviewer_decision";
+  parentSpanId: string | null;
+  durationMs: number | null;
+  statusCode: "OK" | "ERROR" | "UNSET";
+  statusMessage?: string;
+}) {
+  const endTime = new Date(input.event.at);
+  const startTime =
+    input.durationMs != null ? new Date(endTime.getTime() - input.durationMs).toISOString() : input.event.at;
+
+  return {
+    traceId: buildTraceHex(input.caseRecord.traceId),
+    spanId: buildSpanHex(`${input.caseRecord.id}:${input.stage}:${input.event.type}`),
+    parentSpanId: input.parentSpanId,
+    name: `chainops.${input.stage}`,
+    kind: "internal" as const,
+    startTime,
+    endTime: input.event.at,
+    status: input.statusMessage ? { code: input.statusCode, message: input.statusMessage } : { code: input.statusCode },
+    attributes: {
+      "chainops.case.id": input.caseRecord.id,
+      "chainops.case.status": input.caseRecord.status,
+      "chainops.risk.level": input.caseRecord.risk.level,
+      "chainops.trace.id": input.caseRecord.traceId,
+      "chainops.wallet.address": input.caseRecord.walletAddress,
+      "chainops.stage": input.stage,
+      "chainops.audit.event_type": input.event.type,
+      "chainops.duration.ms": input.durationMs ?? -1
+    }
+  };
+}
+
+function buildOpenTelemetryMetrics(analytics: CaseQueueAnalytics): OpenTelemetryExportSnapshot["metrics"] {
+  return [
+    buildMetric(
+      "chainops.intake_pipeline.duration",
+      "Persisted intake timing derived from audit-event evidence.",
+      "ms",
+      analytics.operationalMetrics.intakePipeline
+    ),
+    buildMetric(
+      "chainops.provider_fetch.duration",
+      "Persisted provider timing derived from audit-event evidence.",
+      "ms",
+      analytics.operationalMetrics.providerFetch
+    ),
+    buildMetric(
+      "chainops.reviewer_decision.duration",
+      "Persisted reviewer timing derived from audit-event evidence.",
+      "ms",
+      analytics.operationalMetrics.reviewerDecision
+    ),
+    {
+      name: "chainops.queue.visible_cases",
+      description: "Current filtered queue counts carried alongside the local OpenTelemetry seam.",
+      unit: "1",
+      aggregationTemporality: "cumulative",
+      dataPoints: [
+        { attributes: { status: "pending_review" }, value: analytics.statusTransitions.enteredReviewCount },
+        { attributes: { status: "approved" }, value: analytics.statusTransitions.approvedCount },
+        { attributes: { status: "rejected" }, value: analytics.statusTransitions.rejectedCount },
+        { attributes: { status: "ingestion_failed" }, value: analytics.statusTransitions.failedIngestionCount }
+      ]
+    }
+  ];
+}
+
+function buildMetric(
+  name: string,
+  description: string,
+  unit: "ms",
+  summary: CaseQueueAnalytics["operationalMetrics"]["intakePipeline"]
+): OpenTelemetryExportSnapshot["metrics"][number] {
+  return {
+    name,
+    description,
+    unit,
+    aggregationTemporality: "cumulative",
+    dataPoints: [
+      { attributes: { statistic: "average" }, value: summary.averageDurationMs ?? 0 },
+      { attributes: { statistic: "max" }, value: summary.maxDurationMs ?? 0 },
+      { attributes: { statistic: "completed_count" }, value: summary.completedCount },
+      { attributes: { statistic: "failed_count" }, value: summary.failedCount }
+    ]
+  };
+}
+
+function findLastAuditEvent(auditEvents: AuditEvent[], type: AuditEvent["type"]): AuditEvent | undefined {
+  return [...auditEvents].reverse().find((event) => event.type === type);
+}
+
+function readEventDuration(details: Record<string, unknown> | undefined, key: string): number | null {
+  const value = details?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function buildTraceHex(value: string): string {
+  return createHash("sha256").update(value).digest("hex").slice(0, 32);
+}
+
+function buildSpanHex(value: string): string {
+  return createHash("sha256").update(value).digest("hex").slice(0, 16);
 }

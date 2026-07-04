@@ -525,6 +525,7 @@ test("exports a telemetry handoff artifact from the current filtered queue", asy
   const snapshot = await response.json();
   assert.equal(snapshot.scope, "telemetry_handoff");
   assert.equal(snapshot.service.api.healthPath, "/health");
+  assert.equal(snapshot.service.api.openTelemetryExportPath, "/exports/telemetry/opentelemetry");
   assert.equal(snapshot.queueEvidence.filters.status, "pending_review");
   assert.equal(snapshot.queueEvidence.filters.riskLevel, "high");
   assert.equal(snapshot.queueEvidence.summary.total, 1);
@@ -532,6 +533,60 @@ test("exports a telemetry handoff artifact from the current filtered queue", asy
   assert.equal(snapshot.smoke.demoCommand, "npm run smoke:demo");
   assert.equal(snapshot.collectorNotes.status, "bounded_planning_only");
   assert.equal(snapshot.collectorNotes.recommendedMappings.length >= 3, true);
+});
+
+test("exports a bounded OpenTelemetry seam from persisted audit evidence", async (t) => {
+  const store = await createTestStore();
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const createResponse = await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-request-id": "trace-export-otel-1"
+    },
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+  const created = await createResponse.json();
+
+  const reviewResponse = await fetch(`${baseUrl}/cases/${created.caseRecord.id}/approval`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ decision: "approve", note: "reviewed for otel export" })
+  });
+  assert.equal(reviewResponse.status, 200);
+
+  const response = await fetch(`${baseUrl}/exports/telemetry/opentelemetry?status=approved&risk=high`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-disposition"), 'attachment; filename="opentelemetry-export.json"');
+
+  const snapshot = await response.json();
+  assert.equal(snapshot.scope, "opentelemetry_export");
+  assert.equal(snapshot.resource.serviceName, "chainops-control");
+  assert.equal(snapshot.resource.serviceVersion, "0.1.0");
+  assert.equal(snapshot.filters.status, "approved");
+  assert.equal(snapshot.filters.riskLevel, "high");
+  assert.equal(snapshot.summary.total, 1);
+  assert.equal(snapshot.traces.length, 1);
+  assert.equal(snapshot.traces[0].traceId, "trace-export-otel-1");
+  assert.deepEqual(
+    snapshot.traces[0].spans.map((span) => span.name),
+    ["chainops.intake_pipeline", "chainops.provider_fetch", "chainops.reviewer_decision"]
+  );
+  assert.equal(snapshot.traces[0].spans.every((span) => /^[a-f0-9]{16}$/.test(span.spanId)), true);
+  assert.equal(snapshot.metrics.some((metric) => metric.name === "chainops.provider_fetch.duration"), true);
+  assert.equal(snapshot.links.telemetryHandoffPath, "/exports/telemetry");
+  assert.match(snapshot.boundaries[0], /does not emit OTLP traffic/i);
 });
 
 test("exports a latest release record artifact from the current filtered queue", async (t) => {
@@ -581,6 +636,7 @@ test("exports a latest release record artifact from the current filtered queue",
   assert.equal(snapshot.release.version, "0.1.0");
   assert.equal(snapshot.release.channel, "local_container_runtime");
   assert.equal(snapshot.verification.endpoints.releaseRecordPath, "/exports/releases/latest");
+  assert.equal(snapshot.verification.endpoints.openTelemetryExportPath, "/exports/telemetry/opentelemetry");
   assert.equal(snapshot.verification.requiredCommands.length, 4);
   assert.equal(snapshot.evidence.summary.failedIngestionCount, 1);
   assert.equal(snapshot.evidence.focusTraceId, "trace-release-record-timeout");

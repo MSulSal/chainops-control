@@ -7,6 +7,7 @@ import { normalizeApprovalDecision, normalizeReviewerNote } from "./domain.ts";
 import { createDefaultTransactionProviderFromEnv } from "./provider.ts";
 import {
   buildCaseIncidentSnapshot,
+  buildOpenTelemetryExportSnapshot,
   buildReleaseRecordSnapshot,
   buildTelemetryHandoffSnapshot,
   buildWorkspaceIncidentSnapshot
@@ -44,6 +45,16 @@ export function createApp(store: AuditStore) {
         const cases = await store.listCases(readCaseListFilters(url.searchParams));
         return sendJson(response, 200, buildWorkspaceIncidentSnapshot(cases), {
           "content-disposition": 'attachment; filename="workspace-incident-snapshot.json"'
+        });
+      }
+
+      if (request.method === "GET" && url.pathname === "/exports/telemetry/opentelemetry") {
+        const cases = await store.listCases(readCaseListFilters(url.searchParams));
+        const caseDetails = (
+          await Promise.all(cases.cases.slice(0, 5).map(async (caseItem) => await store.findCase(caseItem.id)))
+        ).filter((detail): detail is NonNullable<typeof detail> => detail !== null);
+        return sendJson(response, 200, buildOpenTelemetryExportSnapshot({ ...cases, caseDetails }), {
+          "content-disposition": 'attachment; filename="opentelemetry-export.json"'
         });
       }
 

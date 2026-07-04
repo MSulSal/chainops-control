@@ -94,6 +94,10 @@ The first observability slice also stays provider-free. `GET /exports/telemetry`
 
 The first release-note slice also stays inside the current service boundary. `GET /exports/releases/latest` packages the current package version, local container runtime contract, verification commands, telemetry links, and rollback evidence into one bounded artifact derived from the same queue analytics and case exports already used elsewhere. That keeps version notes attached to tested runtime evidence instead of a separate manual checklist, while still making it explicit that the repository does not yet publish a managed deployment target or external release backend.
 
+## 2026-07-04 OpenTelemetry export decision
+
+The next observability slice still avoids standing up a collector. `GET /exports/telemetry/opentelemetry` reuses the same persisted case and audit evidence to emit a bounded local trace-and-metric artifact: stage spans are derived from recorded event timestamps and duration fields, while aggregate metric points are derived from the same queue analytics already shown in the reviewer workspace. That keeps the OpenTelemetry story truthful to the current runtime while giving the repository a concrete export seam for future collector wiring, runtime parity checks, and interview discussion.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

@@ -14,6 +14,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 11: a server-action reset control now restores a deterministic demo dataset through the same API boundary, which is a useful pattern for reproducible smoke tests without inventing a private fixture-only UI.
 - Applied in slice 12: a dedicated smoke harness now boots the service, resets the seeded scenario, and asserts stable export evidence over HTTP, which is a useful pattern for proving release readiness without reaching for external test infrastructure too early.
 - Applied in slice 16: the same seeded smoke path now also validates a bounded release record artifact, which is a useful reminder that release notes are more trustworthy when they are generated from the same runtime evidence already used for incident and telemetry exports.
+- Applied in slice 17: the reviewer workspace now links to a local OpenTelemetry-shaped export seam, which is a useful pattern for surfacing observability evidence without introducing a second client-only model or pretending a collector already exists.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -28,6 +29,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 12: the smoke harness reuses the same service and store contracts in-process, which is a good reminder that CI release evidence should exercise the real API boundary instead of reimplementing assertions around internal helpers.
 - Applied in slice 15: a telemetry handoff artifact can stay honest by exporting the existing health/readiness, smoke, trace, and audit-ledger evidence first, then leaving collector plumbing as documented next-step work instead of pretending the stack already exists.
 - Applied in slice 16: a release-record endpoint can stay reviewable by packaging existing queue guidance, smoke commands, and rollback evidence instead of inventing a deployment API or external release service.
+- Applied in slice 17: a local OpenTelemetry export can stay honest by deriving spans and metrics from the existing audit ledger, then making collector wiring an explicit later concern instead of a hidden assumption.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL
@@ -43,6 +45,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 11: a deterministic seed set now proves how to reset relational workflow state safely, preserve foreign-key order, and keep case/audit identifiers stable enough for repeatable comparisons.
 - Applied in slice 12: stable seeded identifiers make it possible to compare exported incident artifacts across repeated resets while intentionally ignoring only time-relative fields such as export timestamps and current pending age.
 - Applied in slice 15: recent trace samples can be handed off as JSON links plus case-export paths, which is a practical bridge between product evidence and future observability tooling.
+- Applied in slice 17: deterministic hex trace and span IDs can be generated from existing workflow identifiers so a local export seam remains stable enough for review and future parity checks without claiming native SDK instrumentation.
 - Docs: https://www.postgresql.org/docs/current/
 
 ## Ethereum data API
@@ -69,6 +72,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 14: the Terraform sandbox reuses those same health/readiness, demo-reset, and smoke commands as IaC outputs, which is a good reminder that deployment/runbook evidence should point back to the tested runtime contract instead of diverging into a separate undocumented path.
 - Applied in slice 15: the telemetry handoff export reuses the same runtime contract plus persisted timing metrics, which is a useful pattern for observability planning when the honest answer is still "collector not provisioned yet."
 - Applied in slice 16: package-version release notes stay bounded when they point back to `npm test`, both smoke commands, and the same trace-backed rollback evidence instead of claiming that a deployment pipeline or hosted release target already exists.
+- Applied in slice 17: OpenTelemetry-shaped spans and metrics are more defensible when they point back to persisted audit timestamps and queue analytics than when they duplicate timers or invent a collector on an unvalidated host.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
@@ -90,3 +94,4 @@ Be able to explain:
 12. Why export incident evidence from the same queue and case APIs instead of rebuilding the artifact in the browser?
 13. Why reset the seeded demo dataset through the same PostgreSQL tables and API boundary instead of keeping a separate fixture-only demo mode?
 14. Why keep the first Terraform slice provider-free instead of forcing a Docker or cloud target that cannot be validated honestly on this host?
+15. Why export a local OpenTelemetry-shaped artifact before adding SDK instrumentation or a collector?

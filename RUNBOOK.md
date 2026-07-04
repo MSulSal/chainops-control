@@ -43,6 +43,19 @@ Expected result:
 - Queue summary, release guidance, request-stage timing analytics, and up to five recent trace samples are exported from the same API-backed reviewer state.
 - Collector notes stay explicitly bounded: they describe how to forward existing signals into a future observability stack, but they do not claim that an external collector, trace backend, or alerting service already exists.
 
+OpenTelemetry seam export:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:4317/exports/telemetry/opentelemetry -OutFile opentelemetry-export.json
+```
+
+Expected result:
+
+- The JSON artifact includes a local resource block, filtered queue summary, and links back to the telemetry handoff, workspace snapshot, and latest release record.
+- Up to five traces are exported with deterministic hex trace/span IDs, stage names for intake, provider fetch, and reviewer decisions, plus span timing derived from persisted audit-event durations.
+- Aggregate metrics for intake, provider fetch, reviewer decisions, and visible queue counts are exported as a bounded local seam for future collector wiring.
+- The artifact remains explicit about current limits: it does not emit OTLP traffic, provision a collector, or claim a managed runtime.
+
 Latest release record export:
 
 ```powershell
@@ -122,7 +135,8 @@ Expected result:
 13. Use `Export workspace snapshot` and confirm the browser downloads JSON with the active filters, queue summary, release guide, and visible-case evidence.
 14. Use `Export case snapshot` from a detail page and confirm the JSON includes the case record, stage trace, incident guide, and immutable audit events.
 15. Use `Export telemetry handoff` from the workspace and confirm the JSON includes the health/readiness paths, smoke commands, queue evidence, trace samples, and bounded collector notes.
-16. Use `Export latest release record` from the workspace and confirm the JSON includes the current version, the required verification commands, and rollback evidence tied to a visible trace or case export.
+16. Use `Export OpenTelemetry seam` from the workspace and confirm the JSON includes deterministic hex trace/span IDs, local spans for each recorded workflow stage, aggregate metrics, and explicit no-collector boundaries.
+17. Use `Export latest release record` from the workspace and confirm the JSON includes the current version, the required verification commands, and rollback evidence tied to a visible trace or case export.
 
 ## Human approval
 
@@ -147,6 +161,7 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - Reviewer decisions now flow through the workspace, but still post to the same API boundary instead of writing directly to PostgreSQL.
 - Workflow analytics and request-stage timing currently come from persisted audit-event details through the reviewer API; there is still no external collector, trace backend, or alerting system.
 - The telemetry handoff export is an operator and planning artifact only. It does not emit OTLP traffic, scrape metrics, or provision observability infrastructure on its own.
+- The OpenTelemetry export is also a bounded local artifact only. It reuses stored audit evidence to shape spans and metrics, but it does not send telemetry to a collector or backend.
 - The latest release record is a bounded handoff artifact only. It does not publish a deployment, mutate infrastructure, or claim a managed release target.
 - Release and rollback guidance are operational playbooks derived from queue and case evidence; they do not trigger deployment changes automatically.
 - GitHub Actions now proves the repo-native test path, the in-process seeded smoke path, the containerized API health/readiness path, and the live seeded runtime smoke path before the Next.js build. It still does not cover a separate worker, managed database, or paid deployment target.

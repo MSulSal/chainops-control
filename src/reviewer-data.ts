@@ -129,6 +129,11 @@ export function getTelemetryHandoffUrl(filters: ReviewerWorkspaceFilters = {}): 
   return `${getApiBaseUrl()}/exports/telemetry${query ? `?${query}` : ""}`;
 }
 
+export function getOpenTelemetryExportUrl(filters: ReviewerWorkspaceFilters = {}): string {
+  const query = buildCaseListQuery(filters);
+  return `${getApiBaseUrl()}/exports/telemetry/opentelemetry${query ? `?${query}` : ""}`;
+}
+
 export function getLatestReleaseRecordUrl(filters: ReviewerWorkspaceFilters = {}): string {
   const query = buildCaseListQuery(filters);
   return `${getApiBaseUrl()}/exports/releases/latest${query ? `?${query}` : ""}`;

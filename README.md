@@ -22,6 +22,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - A container-first runtime smoke path that boots the API against PostgreSQL, checks `/health` and `/ready`, and reruns the seeded incident flow over the live HTTP boundary.
 - A minimal Terraform sandbox contract that validates the current API/PostgreSQL/runtime boundary and emits disposable operator commands without claiming paid or managed infrastructure.
 - A telemetry handoff export that packages health/readiness paths, seeded smoke commands, persisted timing evidence, trace samples, and bounded collector notes without claiming an external observability stack.
+- A bounded OpenTelemetry export seam that maps existing trace IDs and persisted audit-event timings into local spans and aggregate metrics without claiming a collector or backend.
 - A latest-release export that packages the current package version, container runtime contract, smoke/build commands, telemetry links, and rollback evidence into one bounded release record.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
@@ -71,6 +72,7 @@ Without `CHAINOPS_ETHERSCAN_BASE_URL`, the service uses a deterministic local fi
 - `POST /demo/reset`
 - `GET /exports/workspace`
 - `GET /exports/telemetry`
+- `GET /exports/telemetry/opentelemetry`
 - `GET /exports/releases/latest`
 - `GET /exports/cases/:id`
 
@@ -99,7 +101,7 @@ Example approval body:
 
 ## Roadmap
 
-1. Add a bounded OpenTelemetry emission seam that reuses the current trace IDs and audit timings before claiming any external collector or backend.
+1. Add a runtime-parity release gate that compares the live container export surface against the latest seeded telemetry and release artifacts before claiming the runtime is current.
 2. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
 3. Add a real collector or trace backend only after a provider-backed runtime exists to host and validate it truthfully.
 
