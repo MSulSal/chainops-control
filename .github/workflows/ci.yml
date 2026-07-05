@@ -35,6 +35,18 @@ jobs:
       - name: Run runtime health, readiness, and seeded smoke checks
         run: npm run smoke:runtime
 
+      - name: Capture runtime parity evidence bundle
+        if: always()
+        run: npm run capture:ci-evidence
+
+      - name: Upload runtime parity evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-parity-evidence
+          path: artifacts/runtime-parity
+          if-no-files-found: warn
+
       - name: Show compose logs on failure
         if: failure()
         run: docker compose logs api postgres

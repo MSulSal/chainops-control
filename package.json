@@ -9,7 +9,8 @@
     "build:web": "next build",
     "test": "node --test test/*.test.ts",
     "smoke:demo": "node scripts/demo-smoke.ts",
-    "smoke:runtime": "node scripts/runtime-smoke.ts"
+    "smoke:runtime": "node scripts/runtime-smoke.ts",
+    "capture:ci-evidence": "node scripts/capture-ci-evidence.ts"
   },
   "engines": {
     "node": ">=24"

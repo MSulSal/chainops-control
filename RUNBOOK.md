@@ -98,6 +98,19 @@ Expected result:
 - If startup or readiness stalls, the command fails with the last observed health/readiness error so runtime ordering problems are visible in CI.
 - The command writes its latest pass/fail result to `data/runtime-parity/latest.json`, which the reviewer workspace and release record reuse directly.
 
+GitHub Actions evidence capture:
+
+```powershell
+npm run capture:ci-evidence
+```
+
+Expected result:
+
+- The command copies the latest persisted runtime-parity JSON into `artifacts/runtime-parity/runtime-parity-latest.json`.
+- It attempts to download the live `GET /exports/releases/latest` artifact into the same folder while the API container is still running.
+- It writes `artifacts/runtime-parity/ci-evidence-summary.json` and `artifacts/runtime-parity/README.md` so a reviewer can inspect the parity status, release-record capture status, and matching GitHub Actions run metadata after downloading the CI artifact.
+- The CI workflow uploads that folder as the `runtime-parity-evidence` artifact on every run, including failed parity runs.
+
 ## Terraform sandbox
 
 Use the Terraform sandbox when the goal is to review or hand off the disposable runtime contract without claiming that this repository already provisions paid infrastructure.

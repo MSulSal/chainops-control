@@ -26,6 +26,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - A latest-release export that packages the current package version, container runtime contract, smoke/build commands, telemetry links, and rollback evidence into one bounded release record.
 - A runtime-parity release gate in `npm run smoke:runtime` that treats the live container as stale when `/exports/telemetry`, `/exports/telemetry/opentelemetry`, or `/exports/releases/latest` diverge from the current seeded parity contract outside documented time-relative fields.
 - A persisted runtime-parity artifact that records the last `npm run smoke:runtime` pass or fail result so the reviewer workspace and release record can surface stale-container evidence without rerunning the smoke script manually.
+- A GitHub Actions runtime-parity evidence artifact that bundles the latest parity JSON, the latest release record when the live export is reachable, and a capture summary reviewers can download directly from CI.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -104,9 +105,8 @@ Example approval body:
 
 ## Roadmap
 
-1. Surface the last runtime-parity result in the reviewer workspace and release record so stale-container evidence is visible without rerunning the smoke script manually.
-2. Capture the persisted runtime-parity artifact in CI so release reviewers can download the same stale-runtime evidence from GitHub without rerunning the local smoke path.
-3. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
+1. Surface CI run metadata or artifact retrieval hints directly in the release evidence so reviewers can connect a local stale-runtime result back to the matching GitHub Actions run without opening the workflow file.
+2. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
 
 ## Boundaries
 
