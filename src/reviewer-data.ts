@@ -9,6 +9,7 @@ import type {
   RiskLevel
 } from "./domain.ts";
 import type { DemoScenarioName } from "./demo-scenario.ts";
+import type { ReleaseRecordSnapshot } from "./incident-snapshot.ts";
 import type { RuntimeParityResult } from "./runtime-parity.ts";
 
 export type CaseDetailResponse = {
@@ -134,6 +135,21 @@ export async function fetchLatestRuntimeParityResult(): Promise<RuntimeParityRes
   }
 
   return (await response.json()) as RuntimeParityResult;
+}
+
+export async function fetchLatestReleaseRecord(
+  filters: ReviewerWorkspaceFilters = {}
+): Promise<ReleaseRecordSnapshot> {
+  const query = buildCaseListQuery(filters);
+  const response = await fetch(`${getApiBaseUrl()}/exports/releases/latest${query ? `?${query}` : ""}`, {
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`failed to load latest release record: ${response.status}`);
+  }
+
+  return (await response.json()) as ReleaseRecordSnapshot;
 }
 
 export function getWorkspaceSnapshotUrl(filters: ReviewerWorkspaceFilters = {}): string {

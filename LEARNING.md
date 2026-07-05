@@ -20,6 +20,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 20: GitHub Actions now captures the persisted runtime-parity artifact plus the live release record into one downloadable evidence bundle, which is a useful pattern for handing reviewers raw pass/fail evidence without requiring them to rerun the smoke path locally.
 - Applied in slice 21: the cleanest way to tie a stale-runtime signal back to CI was to enrich the existing persisted parity artifact with GitHub Actions metadata instead of inventing a second evidence store or post-run sync step.
 - Applied in slice 21: carrying the artifact name, run URL, and expected bundle files inside the release evidence makes failure review faster because the operator can jump straight from the runtime verdict to the exact downloadable CI bundle.
+- Applied in slice 22: the cleanest way to make release evidence explainable in the workspace was to fetch and render the existing release-record artifact directly instead of reconstructing a second client-only summary that could drift from the API contract.
+- Applied in slice 22: showing verification commands, focus-case links, rollback triggers, and explicit boundaries in the same release panel makes incident-review stories easier to explain because the UI and exported JSON now describe the same operational contract.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -84,6 +86,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 18: a stale runtime should fail on missing or drifting exports before it fails in front of a reviewer, which is why the runtime smoke path now checks the telemetry and release artifacts directly.
 - Applied in slice 19: a parity gate is easier to operate when its last result is persisted and queryable through the same API/reviewer surface, because release reviewers can see stale-runtime evidence even when they are not the ones who ran the smoke command.
 - Applied in slice 20: artifact capture should happen before teardown and with `if: always()` so reviewers still get failure evidence when the runtime-parity gate fails.
+- Applied in slice 22: release evidence stays honest when the UI previews the same exported record the API serves, because reviewers can inspect the current operational contract without relying on a separate manually maintained checklist.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
@@ -109,3 +112,4 @@ Be able to explain:
 16. Why persist the last runtime-parity result as an artifact instead of leaving it only in console logs?
 17. Why upload the parity artifact as a CI bundle before tearing down the runtime?
 18. Why carry the GitHub Actions run URL and artifact hints on the persisted parity artifact instead of adding a separate release-evidence endpoint or table?
+19. Why render the release-record export directly in the workspace instead of rebuilding the same release summary as client-only UI state?

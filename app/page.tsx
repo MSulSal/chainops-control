@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { CaseStatus, RiskLevel } from "../src/domain.ts";
 import {
   fetchCaseSummaries,
+  fetchLatestReleaseRecord,
   fetchLatestRuntimeParityResult,
   getLatestReleaseRecordUrl,
   getLatestRuntimeParityUrl,
@@ -51,8 +52,11 @@ export default async function ReviewerWorkspacePage({
   const openTelemetryExportUrl = getOpenTelemetryExportUrl(initialFilters);
   const releaseRecordUrl = getLatestReleaseRecordUrl(initialFilters);
   const runtimeParityUrl = getLatestRuntimeParityUrl();
+  const releaseRecord = await fetchLatestReleaseRecord(initialFilters).catch(() => null);
   const runtimeParityResult = await fetchLatestRuntimeParityResult().catch(() => null);
   const runtimeParityCiEvidence = runtimeParityResult?.ciEvidence ?? null;
+  const releaseRecordRuntimeParity = releaseRecord?.verification.runtimeParity.lastResult ?? null;
+  const releaseRecordReviewArtifact = releaseRecord?.verification.runtimeParity.reviewArtifact ?? null;
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -220,68 +224,136 @@ export default async function ReviewerWorkspacePage({
           </div>
           <div className="facts-grid">
             <div className="fact">
-              <strong>Version source</strong>
-              <span className="muted">Current `package.json` version plus the local container runtime channel.</span>
+              <strong>Release version</strong>
+              <span className="mono">
+                {releaseRecord
+                  ? `${releaseRecord.release.version} on ${releaseRecord.release.channel}`
+                  : "Latest release record preview is unavailable."}
+              </span>
             </div>
             <div className="fact">
-              <strong>Verification contract</strong>
-              <span className="mono">npm test | npm run smoke:demo | npm run smoke:runtime | npm run build:web</span>
+              <strong>Release status</strong>
+              <span className="muted">
+                {releaseRecord
+                  ? `${releaseRecord.release.statusLabel}: ${releaseRecord.release.summary}`
+                  : "The workspace can still export the JSON record once the API is reachable."}
+              </span>
             </div>
             <div className="fact">
               <strong>Last parity check</strong>
               <span className="muted">
-                {runtimeParityResult
-                  ? `${runtimeParityResult.status.toUpperCase()} at ${formatTimestamp(runtimeParityResult.checkedAt)} against ${runtimeParityResult.baseUrl}`
+                {releaseRecordRuntimeParity
+                  ? `${releaseRecordRuntimeParity.status.toUpperCase()} at ${formatTimestamp(releaseRecordRuntimeParity.checkedAt)} against ${releaseRecordRuntimeParity.baseUrl}`
                   : "No persisted runtime parity result yet. Run npm run smoke:runtime to capture one."}
               </span>
             </div>
             <div className="fact">
               <strong>CI review path</strong>
               <span className="muted">
-                {runtimeParityCiEvidence
-                  ? `${runtimeParityCiEvidence.artifactName} from the matching GitHub Actions run carries the raw parity JSON, release record JSON, and capture summary.`
+                {releaseRecordReviewArtifact
+                  ? `${releaseRecordReviewArtifact.artifactName} from the matching GitHub Actions run carries the raw parity JSON, release record JSON, and capture summary.`
                   : "No GitHub Actions review artifact is attached to the latest parity result."}
               </span>
             </div>
           </div>
-          {runtimeParityResult ? (
-            <div className={`callout ${runtimeParityResult.status === "failed" ? "callout-danger" : "callout-success"}`}>
-              <strong>{runtimeParityResult.status === "failed" ? "Stale runtime signal." : "Runtime parity passed."}</strong>{" "}
-              {runtimeParityResult.summary}
-              {runtimeParityResult.error ? ` Latest failure: ${runtimeParityResult.error}` : ""}
+          {releaseRecordRuntimeParity ? (
+            <div
+              className={`callout ${releaseRecordRuntimeParity.status === "failed" ? "callout-danger" : "callout-success"}`}
+            >
+              <strong>
+                {releaseRecordRuntimeParity.status === "failed" ? "Stale runtime signal." : "Runtime parity passed."}
+              </strong>{" "}
+              {releaseRecordRuntimeParity.summary}
+              {releaseRecordRuntimeParity.error ? ` Latest failure: ${releaseRecordRuntimeParity.error}` : ""}
             </div>
           ) : (
             <div className="callout callout-info">
               No runtime parity artifact is stored yet. The release record will stay incomplete until `npm run smoke:runtime` writes one.
             </div>
           )}
-          {runtimeParityResult ? (
+          {releaseRecord ? (
+            <div className="detail-grid detail-grid-balanced">
+              <article className="metric-card">
+                <p className="eyebrow">Release record preview</p>
+                <ul className="response-list">
+                  <li>{releaseRecord.release.summary}</li>
+                  <li>{`Reviewer workspace: ${releaseRecord.release.reviewerWorkspacePath}`}</li>
+                  <li>{`Focus trace: ${releaseRecord.evidence.focusTraceId ?? "No focus trace in current filtered queue."}`}</li>
+                  <li>{`Rollback decision: ${releaseRecord.rollback.decision}`}</li>
+                </ul>
+              </article>
+              <article className="metric-card">
+                <p className="eyebrow">Verification commands</p>
+                <ul className="response-list">
+                  {releaseRecord.verification.requiredCommands.map((command) => (
+                    <li key={command.name}>
+                      <span className="mono">{command.command}</span>
+                      {` - ${command.purpose}`}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            </div>
+          ) : null}
+          {releaseRecord ? (
             <div className="facts-grid">
-              {runtimeParityResult.exportChecks.map((check) => (
+              <div className="fact">
+                <strong>Workspace export</strong>
+                <span className="mono">{releaseRecord.verification.endpoints.workspaceExportPath}</span>
+              </div>
+              <div className="fact">
+                <strong>Telemetry export</strong>
+                <span className="mono">{releaseRecord.verification.endpoints.telemetryExportPath}</span>
+              </div>
+              <div className="fact">
+                <strong>OpenTelemetry seam</strong>
+                <span className="mono">{releaseRecord.verification.endpoints.openTelemetryExportPath}</span>
+              </div>
+              <div className="fact">
+                <strong>Release record export</strong>
+                <span className="mono">{releaseRecord.verification.endpoints.releaseRecordPath}</span>
+              </div>
+              <div className="fact">
+                <strong>Focus case</strong>
+                <span className="muted">
+                  {releaseRecord.evidence.focusCasePath ?? "No focus case path is available in the current filtered queue."}
+                </span>
+              </div>
+              <div className="fact">
+                <strong>Focus case export</strong>
+                <span className="muted">
+                  {releaseRecord.evidence.focusCaseExportPath ?? "No focus case export is available in the current filtered queue."}
+                </span>
+              </div>
+            </div>
+          ) : null}
+          {releaseRecordRuntimeParity ? (
+            <div className="facts-grid">
+              {releaseRecordRuntimeParity.exportChecks.map((check) => (
                 <div key={check.path} className="fact">
                   <strong>{check.path}</strong>
                   <span className="muted">{`${check.status}: ${check.detail}`}</span>
                 </div>
               ))}
-              {runtimeParityCiEvidence ? (
+              {releaseRecordReviewArtifact ? (
                 <>
                   <div className="fact">
                     <strong>Artifact bundle</strong>
                     <span className="mono">
-                      {runtimeParityCiEvidence.artifactName}: {runtimeParityCiEvidence.artifactFiles.join(", ")}
+                      {releaseRecordReviewArtifact.artifactName}: {releaseRecordReviewArtifact.artifactFiles.join(", ")}
                     </span>
                   </div>
                   <div className="fact">
                     <strong>Review hint</strong>
-                    <span className="muted">{runtimeParityCiEvidence.reviewHint}</span>
+                    <span className="muted">{releaseRecordReviewArtifact.reviewHint}</span>
                   </div>
                   <div className="fact">
                     <strong>GitHub Actions run</strong>
                     <span className="muted">
-                      {runtimeParityCiEvidence.run.runUrl ? (
-                        <a href={runtimeParityCiEvidence.run.runUrl}>Open matching workflow run</a>
-                      ) : runtimeParityCiEvidence.run.runId ? (
-                        `Run ${runtimeParityCiEvidence.run.runId}`
+                      {releaseRecordReviewArtifact.run.runUrl ? (
+                        <a href={releaseRecordReviewArtifact.run.runUrl}>Open matching workflow run</a>
+                      ) : releaseRecordReviewArtifact.run.runId ? (
+                        `Run ${releaseRecordReviewArtifact.run.runId}`
                       ) : (
                         "Run metadata was not recorded for this parity result."
                       )}
@@ -289,6 +361,26 @@ export default async function ReviewerWorkspacePage({
                   </div>
                 </>
               ) : null}
+            </div>
+          ) : null}
+          {releaseRecord ? (
+            <div className="detail-grid detail-grid-balanced">
+              <article className="metric-card">
+                <p className="eyebrow">Rollback triggers</p>
+                <ul className="response-list">
+                  {releaseRecord.rollback.triggers.map((trigger) => (
+                    <li key={trigger}>{trigger}</li>
+                  ))}
+                </ul>
+              </article>
+              <article className="metric-card">
+                <p className="eyebrow">Boundaries</p>
+                <ul className="response-list">
+                  {releaseRecord.boundaries.map((boundary) => (
+                    <li key={boundary}>{boundary}</li>
+                  ))}
+                </ul>
+              </article>
             </div>
           ) : null}
           <div className="filter-actions">

@@ -114,6 +114,10 @@ The next reviewability step still stays inside the existing runtime boundary. Af
 
 The next refinement still stays inside that same boundary. `npm run smoke:runtime` now records GitHub Actions run metadata and artifact retrieval hints directly in the persisted parity artifact when CI context is available. The release record exposes that same review path under `verification.runtimeParity`, and the reviewer workspace surfaces it next to the last parity verdict so an operator can move from stale-runtime evidence to the exact CI bundle without opening workflow YAML or adding a new persistence layer.
 
+## 2026-07-05 release-record workspace-preview decision
+
+The next reviewability step still reuses the existing HTTP contract instead of inventing a second release-summary model in React. The reviewer workspace now fetches `GET /exports/releases/latest` directly and renders a bounded preview of version, release status, verification commands, focus-case links, rollback triggers, and boundaries alongside the persisted runtime-parity verdict. That keeps the UI aligned with the exported artifact reviewers already download, while avoiding duplicate state, a new database table, or a manual checklist that could drift from the API contract.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

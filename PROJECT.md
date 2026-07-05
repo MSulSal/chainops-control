@@ -37,6 +37,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 19: implemented a persisted runtime-parity artifact plus API/workspace visibility so the latest `smoke:runtime` result is visible in the reviewer UI and release record without rerunning the runtime smoke path manually.
 - Slice 20: implemented GitHub Actions evidence capture that uploads the latest runtime-parity JSON, the latest reachable release record, and a review summary as a downloadable CI artifact for release reviewers.
 - Slice 21: threaded GitHub Actions run metadata and artifact retrieval hints into the persisted runtime-parity result, surfaced that review path in the release record, and exposed it in the reviewer workspace so stale-runtime evidence can be tied back to the matching CI run.
+- Slice 22: surfaced the latest release-record export directly in the reviewer workspace with a live preview of version, release status, verification commands, focus-case links, rollback triggers, and product boundaries so CI-linked runtime evidence is visible without downloading JSON first.
 
 ## Success evidence
 
