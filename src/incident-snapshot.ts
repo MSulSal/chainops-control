@@ -16,7 +16,7 @@ import {
   getProviderSummary,
   getWorkspaceOperationalGuide
 } from "./reviewer-view.ts";
-import type { RuntimeParityResult } from "./runtime-parity.ts";
+import type { RuntimeParityCiEvidence, RuntimeParityResult } from "./runtime-parity.ts";
 
 const require = createRequire(import.meta.url);
 const packageJson = require("../package.json") as { version: string };
@@ -193,6 +193,7 @@ export type ReleaseRecordSnapshot = {
       ignoredFields: string[];
       failureMode: string;
       lastResult: RuntimeParityResult | null;
+      reviewArtifact: RuntimeParityCiEvidence | null;
     };
   };
   evidence: {
@@ -443,7 +444,8 @@ export function buildReleaseRecordSnapshot(input: {
         ],
         failureMode:
           "Treat the runtime as stale when any required export is missing or diverges from the current seeded parity contract after normalizing the documented time-relative fields.",
-        lastResult: input.lastRuntimeParityResult ?? null
+        lastResult: input.lastRuntimeParityResult ?? null,
+        reviewArtifact: input.lastRuntimeParityResult?.ciEvidence ?? null
       }
     },
     evidence: {

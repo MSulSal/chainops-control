@@ -52,6 +52,7 @@ export default async function ReviewerWorkspacePage({
   const releaseRecordUrl = getLatestReleaseRecordUrl(initialFilters);
   const runtimeParityUrl = getLatestRuntimeParityUrl();
   const runtimeParityResult = await fetchLatestRuntimeParityResult().catch(() => null);
+  const runtimeParityCiEvidence = runtimeParityResult?.ciEvidence ?? null;
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -234,6 +235,14 @@ export default async function ReviewerWorkspacePage({
                   : "No persisted runtime parity result yet. Run npm run smoke:runtime to capture one."}
               </span>
             </div>
+            <div className="fact">
+              <strong>CI review path</strong>
+              <span className="muted">
+                {runtimeParityCiEvidence
+                  ? `${runtimeParityCiEvidence.artifactName} from the matching GitHub Actions run carries the raw parity JSON, release record JSON, and capture summary.`
+                  : "No GitHub Actions review artifact is attached to the latest parity result."}
+              </span>
+            </div>
           </div>
           {runtimeParityResult ? (
             <div className={`callout ${runtimeParityResult.status === "failed" ? "callout-danger" : "callout-success"}`}>
@@ -254,6 +263,32 @@ export default async function ReviewerWorkspacePage({
                   <span className="muted">{`${check.status}: ${check.detail}`}</span>
                 </div>
               ))}
+              {runtimeParityCiEvidence ? (
+                <>
+                  <div className="fact">
+                    <strong>Artifact bundle</strong>
+                    <span className="mono">
+                      {runtimeParityCiEvidence.artifactName}: {runtimeParityCiEvidence.artifactFiles.join(", ")}
+                    </span>
+                  </div>
+                  <div className="fact">
+                    <strong>Review hint</strong>
+                    <span className="muted">{runtimeParityCiEvidence.reviewHint}</span>
+                  </div>
+                  <div className="fact">
+                    <strong>GitHub Actions run</strong>
+                    <span className="muted">
+                      {runtimeParityCiEvidence.run.runUrl ? (
+                        <a href={runtimeParityCiEvidence.run.runUrl}>Open matching workflow run</a>
+                      ) : runtimeParityCiEvidence.run.runId ? (
+                        `Run ${runtimeParityCiEvidence.run.runId}`
+                      ) : (
+                        "Run metadata was not recorded for this parity result."
+                      )}
+                    </span>
+                  </div>
+                </>
+              ) : null}
             </div>
           ) : null}
           <div className="filter-actions">

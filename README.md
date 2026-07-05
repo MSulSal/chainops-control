@@ -27,6 +27,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - A runtime-parity release gate in `npm run smoke:runtime` that treats the live container as stale when `/exports/telemetry`, `/exports/telemetry/opentelemetry`, or `/exports/releases/latest` diverge from the current seeded parity contract outside documented time-relative fields.
 - A persisted runtime-parity artifact that records the last `npm run smoke:runtime` pass or fail result so the reviewer workspace and release record can surface stale-container evidence without rerunning the smoke script manually.
 - A GitHub Actions runtime-parity evidence artifact that bundles the latest parity JSON, the latest release record when the live export is reachable, and a capture summary reviewers can download directly from CI.
+- Release evidence that now carries the matching GitHub Actions run URL, artifact name, and expected bundle files inside the persisted runtime-parity result so reviewers can jump from a stale-runtime verdict to the exact CI artifact without opening workflow YAML.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -105,7 +106,7 @@ Example approval body:
 
 ## Roadmap
 
-1. Surface CI run metadata or artifact retrieval hints directly in the release evidence so reviewers can connect a local stale-runtime result back to the matching GitHub Actions run without opening the workflow file.
+1. Surface the latest release-record export directly in the reviewer workspace so the same CI-linked runtime evidence is visible without downloading JSON first.
 2. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
 
 ## Boundaries

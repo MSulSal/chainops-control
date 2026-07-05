@@ -69,6 +69,10 @@ The next evidence step persists the last runtime-parity result as a local JSON a
 
 The next evidence step uploads the persisted runtime-parity result and any reachable live release record as a GitHub Actions artifact instead of pushing status back into the product or requiring reviewers to rerun the smoke path locally. That keeps failure evidence downloadable from CI and tied to the exact workflow run, while staying honest about the current boundary: the repository still does not claim hosted runtime monitoring, GitHub API issue automation, or a separate evidence store.
 
+## CI-linked release-evidence tradeoff
+
+The next reviewability step stores GitHub Actions run metadata and artifact retrieval hints on the existing runtime-parity artifact instead of adding a release-evidence table or a second API endpoint. That keeps the release record and reviewer workspace aligned on one persisted truth source while making the CI evidence path explicit enough for failure triage.
+
 ## Terraform sandbox tradeoff
 
 The first Terraform slice uses only validated inputs, computed locals, outputs, and `terraform_data` state instead of a provider-backed Docker or cloud target. That is intentionally conservative: this host cannot currently validate Terraform CLI plus a real runtime target, and the product still has no truthful managed-environment story. Capturing the reviewed runtime contract in Terraform now is still useful because it proves variable validation, deployment-shape thinking, and operator handoff without inventing infrastructure behavior that the repository cannot yet test.

@@ -657,7 +657,28 @@ test("exports a latest release record artifact from the current filtered queue",
           detail: "The seeded runtime flow stopped before this export check."
         }
       ],
-      error: "404 Not Found"
+      error: "404 Not Found",
+      ciEvidence: {
+        provider: "github_actions",
+        artifactName: "runtime-parity-evidence",
+        artifactFiles: [
+          "runtime-parity-latest.json",
+          "latest-release-record.json",
+          "ci-evidence-summary.json",
+          "README.md"
+        ],
+        reviewHint:
+          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, and capture summary without rerunning the live smoke path.",
+        run: {
+          repository: "MSulSal/chainops-control",
+          runId: "123456789",
+          runAttempt: "2",
+          refName: "main",
+          sha: "deadbeef",
+          serverUrl: "https://github.com",
+          runUrl: "https://github.com/MSulSal/chainops-control/actions/runs/123456789"
+        }
+      }
     })
   );
 
@@ -683,6 +704,11 @@ test("exports a latest release record artifact from the current filtered queue",
   assert.match(snapshot.verification.runtimeParity.failureMode, /runtime as stale/i);
   assert.equal(snapshot.verification.runtimeParity.lastResult?.status, "failed");
   assert.equal(snapshot.verification.runtimeParity.lastResult?.exportChecks[1]?.status, "missing");
+  assert.equal(snapshot.verification.runtimeParity.reviewArtifact?.artifactName, "runtime-parity-evidence");
+  assert.equal(
+    snapshot.verification.runtimeParity.reviewArtifact?.run.runUrl,
+    "https://github.com/MSulSal/chainops-control/actions/runs/123456789"
+  );
   assert.equal(snapshot.verification.requiredCommands.length, 4);
   assert.equal(snapshot.evidence.summary.failedIngestionCount, 1);
   assert.equal(snapshot.evidence.focusTraceId, "trace-release-record-timeout");
@@ -713,7 +739,25 @@ test("returns the latest persisted runtime parity result when available", async 
       ],
       scenario: "incident_review_v1",
       failedCaseId: "44444444-4444-4444-8444-444444444444",
-      traceIds: ["trace-demo-provider-timeout"]
+      traceIds: ["trace-demo-provider-timeout"],
+      ciEvidence: {
+        provider: "github_actions",
+        artifactName: "runtime-parity-evidence",
+        artifactFiles: [
+          "runtime-parity-latest.json",
+          "latest-release-record.json",
+          "ci-evidence-summary.json",
+          "README.md"
+        ],
+        reviewHint:
+          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, and capture summary without rerunning the live smoke path.",
+        run: {
+          repository: "MSulSal/chainops-control",
+          runId: "987654321",
+          serverUrl: "https://github.com",
+          runUrl: "https://github.com/MSulSal/chainops-control/actions/runs/987654321"
+        }
+      }
     })
   );
 
@@ -739,6 +783,7 @@ test("returns the latest persisted runtime parity result when available", async 
   assert.equal(snapshot.status, "passed");
   assert.equal(snapshot.scenario, "incident_review_v1");
   assert.equal(snapshot.exportChecks[0].path, "/exports/telemetry");
+  assert.equal(snapshot.ciEvidence?.artifactName, "runtime-parity-evidence");
 });
 
 test("exports a case incident snapshot with trace-backed guide and audit evidence", async (t) => {

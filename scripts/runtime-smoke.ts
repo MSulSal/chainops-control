@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { setTimeout as delay } from "node:timers/promises";
 import { runSeededDemoSmokeTest } from "../src/demo-smoke.ts";
-import { writeLatestRuntimeParityResult } from "../src/runtime-parity.ts";
+import { writeLatestRuntimeParityResult, type RuntimeParityCiEvidence } from "../src/runtime-parity.ts";
 
 type HealthResponse = {
   status: string;
@@ -21,6 +21,13 @@ const baseUrl = (process.env.CHAINOPS_SMOKE_BASE_URL?.trim() || "http://127.0.0.
 const timeoutMs = readNumberEnv("CHAINOPS_SMOKE_TIMEOUT_MS", 30_000);
 const pollIntervalMs = readNumberEnv("CHAINOPS_SMOKE_POLL_INTERVAL_MS", 500);
 const comparedExports = ["/exports/telemetry", "/exports/telemetry/opentelemetry", "/exports/releases/latest"];
+const artifactName = process.env.CHAINOPS_CI_ARTIFACT_NAME?.trim() || "runtime-parity-evidence";
+const artifactFiles = [
+  "runtime-parity-latest.json",
+  "latest-release-record.json",
+  "ci-evidence-summary.json",
+  "README.md"
+];
 const ignoredFields = [
   "generatedAt",
   "queueEvidence.analytics.reviewLatency.oldestPendingHours",
@@ -31,6 +38,8 @@ const ignoredFields = [
 ];
 
 async function main() {
+  const ciEvidence = buildCiEvidence();
+
   try {
     await waitForJson<HealthResponse>(
       `${baseUrl}/health`,
@@ -65,7 +74,8 @@ async function main() {
       })),
       scenario: result.scenario,
       failedCaseId: result.failedCaseId,
-      traceIds: result.traceIds
+      traceIds: result.traceIds,
+      ciEvidence
     });
     console.log(
       `runtime parity gate passed: ${result.scenario} | failed case ${result.failedCaseId} | traces ${result.traceIds.join(", ")}`
@@ -83,10 +93,39 @@ async function main() {
         status: "not_checked",
         detail: "The seeded runtime flow did not reach this export check before failing."
       })),
-      error: (error as Error).message
+      error: (error as Error).message,
+      ciEvidence
     });
     throw error;
   }
+}
+
+function buildCiEvidence(env: NodeJS.ProcessEnv = process.env): RuntimeParityCiEvidence | undefined {
+  const repository = env.GITHUB_REPOSITORY?.trim();
+  const runId = env.GITHUB_RUN_ID?.trim();
+  const serverUrl = env.GITHUB_SERVER_URL?.trim();
+  const runUrl = repository && runId && serverUrl ? `${serverUrl}/${repository}/actions/runs/${runId}` : undefined;
+
+  if (!repository && !runId && !serverUrl && env.GITHUB_ACTIONS !== "true") {
+    return undefined;
+  }
+
+  return {
+    provider: "github_actions",
+    artifactName,
+    artifactFiles,
+    reviewHint:
+      "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, and capture summary without rerunning the live smoke path.",
+    run: {
+      repository,
+      runId,
+      runAttempt: env.GITHUB_RUN_ATTEMPT?.trim(),
+      refName: env.GITHUB_REF_NAME?.trim(),
+      sha: env.GITHUB_SHA?.trim(),
+      serverUrl,
+      runUrl
+    }
+  };
 }
 
 async function waitForJson<T>(url: string, validate: (body: T) => void, label: string): Promise<void> {

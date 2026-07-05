@@ -9,6 +9,22 @@ export type RuntimeParityExportCheck = {
   detail: string;
 };
 
+export type RuntimeParityCiEvidence = {
+  provider: "github_actions";
+  artifactName: string;
+  artifactFiles: string[];
+  reviewHint: string;
+  run: {
+    repository?: string;
+    runId?: string;
+    runAttempt?: string;
+    refName?: string;
+    sha?: string;
+    serverUrl?: string;
+    runUrl?: string;
+  };
+};
+
 export type RuntimeParityResult = {
   checkedAt: string;
   baseUrl: string;
@@ -21,6 +37,7 @@ export type RuntimeParityResult = {
   failedCaseId?: string;
   traceIds?: string[];
   error?: string;
+  ciEvidence?: RuntimeParityCiEvidence;
 };
 
 const DEFAULT_RUNTIME_PARITY_PATH = path.join("data", "runtime-parity", "latest.json");

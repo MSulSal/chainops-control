@@ -18,6 +18,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 18: the live runtime smoke path now compares telemetry, OpenTelemetry, and release-record exports against the current seeded parity contract, which is a useful pattern for catching stale container drift before a release artifact is treated as current.
 - Applied in slice 19: the runtime smoke path now persists its latest pass/fail result as a local artifact and the API/UI read that same artifact back, which is a useful pattern for surfacing CI or operator evidence without inventing a second database table for ephemeral release checks.
 - Applied in slice 20: GitHub Actions now captures the persisted runtime-parity artifact plus the live release record into one downloadable evidence bundle, which is a useful pattern for handing reviewers raw pass/fail evidence without requiring them to rerun the smoke path locally.
+- Applied in slice 21: the cleanest way to tie a stale-runtime signal back to CI was to enrich the existing persisted parity artifact with GitHub Actions metadata instead of inventing a second evidence store or post-run sync step.
+- Applied in slice 21: carrying the artifact name, run URL, and expected bundle files inside the release evidence makes failure review faster because the operator can jump straight from the runtime verdict to the exact downloadable CI bundle.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -106,3 +108,4 @@ Be able to explain:
 15. Why export a local OpenTelemetry-shaped artifact before adding SDK instrumentation or a collector?
 16. Why persist the last runtime-parity result as an artifact instead of leaving it only in console logs?
 17. Why upload the parity artifact as a CI bundle before tearing down the runtime?
+18. Why carry the GitHub Actions run URL and artifact hints on the persisted parity artifact instead of adding a separate release-evidence endpoint or table?

@@ -9,6 +9,7 @@ import type {
   RiskLevel
 } from "./domain.ts";
 import type { DemoScenarioName } from "./demo-scenario.ts";
+import type { RuntimeParityResult } from "./runtime-parity.ts";
 
 export type CaseDetailResponse = {
   caseRecord: CaseRecord;
@@ -47,24 +48,6 @@ export type DemoResetResponse = {
   workspacePath: string;
   workspaceSnapshotPath: string;
   notes: string[];
-};
-
-export type RuntimeParityResult = {
-  checkedAt: string;
-  baseUrl: string;
-  status: "passed" | "failed";
-  summary: string;
-  comparedExports: string[];
-  ignoredFields: string[];
-  exportChecks: Array<{
-    path: string;
-    status: "matched" | "missing" | "diverged" | "not_checked";
-    detail: string;
-  }>;
-  scenario?: string;
-  failedCaseId?: string;
-  traceIds?: string[];
-  error?: string;
 };
 
 export async function fetchCaseSummaries(filters: ReviewerWorkspaceFilters = {}): Promise<CaseListResponse> {

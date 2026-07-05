@@ -110,6 +110,10 @@ The next release-evidence step still stays local and bounded: the runtime smoke 
 
 The next reviewability step still stays inside the existing runtime boundary. After `npm run smoke:runtime`, GitHub Actions now captures the persisted runtime-parity JSON, attempts to fetch the live release record while the API is still running, and uploads both plus a summary/README bundle as a workflow artifact. That keeps release-review evidence downloadable even when the parity gate fails, while avoiding GitHub API writebacks, a separate evidence database, or claims of hosted release monitoring.
 
+## 2026-07-05 CI-linked release-evidence decision
+
+The next refinement still stays inside that same boundary. `npm run smoke:runtime` now records GitHub Actions run metadata and artifact retrieval hints directly in the persisted parity artifact when CI context is available. The release record exposes that same review path under `verification.runtimeParity`, and the reviewer workspace surfaces it next to the last parity verdict so an operator can move from stale-runtime evidence to the exact CI bundle without opening workflow YAML or adding a new persistence layer.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.
