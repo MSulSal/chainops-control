@@ -498,6 +498,63 @@ test("exports a workspace incident snapshot from the current filtered queue", as
   assert.equal(snapshot.releaseGuide.statusLabel, "Ready");
 });
 
+test("exports a host-readiness artifact for current host prerequisites", async (t) => {
+  const store = await createTestStore();
+  const app = createApp(store, {
+    loadHostReadinessSnapshot: async () => ({
+      generatedAt: "2026-07-06T20:00:00.000Z",
+      scope: "host_readiness",
+      overall: {
+        statusLabel: "Blocked",
+        summary: "Provider-backed sandbox validation is blocked on this host until Docker engine and Terraform CLI are fixed."
+      },
+      runtime: {
+        dockerComposeFile: "docker-compose.yml",
+        terraformSandboxPath: "infra/terraform/sandbox",
+        reviewerWorkspacePath: "/",
+        apiBaseUrl: "http://127.0.0.1:4317"
+      },
+      checks: [
+        {
+          key: "docker_engine",
+          label: "Docker engine",
+          status: "blocked",
+          summary: "Docker engine is not reachable from this host.",
+          detail: "open //./pipe/docker_engine: The system cannot find the file specified.",
+          command: "docker info --format {{.ServerVersion}}"
+        }
+      ],
+      providerSandbox: {
+        status: "blocked",
+        summary: "The first provider-backed sandbox attempt should stay paused on this host.",
+        missingRequirements: ["Docker engine: Docker engine is not reachable from this host."],
+        nextSteps: ["Resolve docker engine and rerun `docker info --format {{.ServerVersion}}`."]
+      },
+      boundaries: ["Local host readiness only."]
+    })
+  });
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const response = await fetch(`${baseUrl}/exports/host-readiness`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-disposition"), 'attachment; filename="host-readiness.json"');
+
+  const snapshot = await response.json();
+  assert.equal(snapshot.scope, "host_readiness");
+  assert.equal(snapshot.overall.statusLabel, "Blocked");
+  assert.equal(snapshot.checks[0].key, "docker_engine");
+  assert.equal(snapshot.providerSandbox.status, "blocked");
+});
+
 test("exports a telemetry handoff artifact from the current filtered queue", async (t) => {
   const store = await createTestStore();
   const app = createApp(store);

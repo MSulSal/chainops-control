@@ -12,12 +12,18 @@ import {
   buildTelemetryHandoffSnapshot,
   buildWorkspaceIncidentSnapshot
 } from "./incident-snapshot.ts";
+import { collectHostReadinessSnapshot, type HostReadinessSnapshot } from "./host-readiness.ts";
 import { readLatestRuntimeParityResult } from "./runtime-parity.ts";
 import { DEMO_SCENARIO_NAME } from "./demo-scenario.ts";
 
 type JsonBody = Record<string, unknown>;
 
-export function createApp(store: AuditStore) {
+export function createApp(
+  store: AuditStore,
+  options: {
+    loadHostReadinessSnapshot?: () => Promise<HostReadinessSnapshot>;
+  } = {}
+) {
   return createHttpServer(async (request, response) => {
     const requestStartedAtMs = performance.now();
     const url = new URL(request.url ?? "/", "http://localhost");
@@ -46,6 +52,15 @@ export function createApp(store: AuditStore) {
         const cases = await store.listCases(readCaseListFilters(url.searchParams));
         return sendJson(response, 200, buildWorkspaceIncidentSnapshot(cases), {
           "content-disposition": 'attachment; filename="workspace-incident-snapshot.json"'
+        });
+      }
+
+      if (request.method === "GET" && url.pathname === "/exports/host-readiness") {
+        const snapshot = options.loadHostReadinessSnapshot
+          ? await options.loadHostReadinessSnapshot()
+          : await collectHostReadinessSnapshot();
+        return sendJson(response, 200, snapshot, {
+          "content-disposition": 'attachment; filename="host-readiness.json"'
         });
       }
 

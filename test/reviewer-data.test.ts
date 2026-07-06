@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchLatestReleaseRecord } from "../src/reviewer-data.ts";
+import { fetchHostReadinessSnapshot, fetchLatestReleaseRecord, getHostReadinessUrl } from "../src/reviewer-data.ts";
 
 test("fetches the latest release record with reviewer filters", async () => {
   const originalFetch = globalThis.fetch;
@@ -145,6 +145,73 @@ test("fetches the latest release record with reviewer filters", async () => {
     assert.equal(record.scope, "release_record");
     assert.equal(record.release.version, "0.1.0");
     assert.equal(record.evidence.focusTraceId, "trace-demo-provider-timeout");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalBaseUrl === undefined) {
+      delete process.env.CHAINOPS_API_BASE_URL;
+    } else {
+      process.env.CHAINOPS_API_BASE_URL = originalBaseUrl;
+    }
+  }
+});
+
+test("fetches the host-readiness artifact from the API boundary", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalBaseUrl = process.env.CHAINOPS_API_BASE_URL;
+
+  process.env.CHAINOPS_API_BASE_URL = "http://127.0.0.1:9999";
+
+  let requestedUrl = "";
+  globalThis.fetch = (async (input) => {
+    requestedUrl = String(input);
+
+    return new Response(
+      JSON.stringify({
+        generatedAt: "2026-07-06T20:00:00.000Z",
+        scope: "host_readiness",
+        overall: {
+          statusLabel: "Blocked",
+          summary: "Provider-backed sandbox validation is blocked on this host until Docker engine and Terraform CLI are fixed."
+        },
+        runtime: {
+          dockerComposeFile: "docker-compose.yml",
+          terraformSandboxPath: "infra/terraform/sandbox",
+          reviewerWorkspacePath: "/",
+          apiBaseUrl: "http://127.0.0.1:4317"
+        },
+        checks: [
+          {
+            key: "docker_engine",
+            label: "Docker engine",
+            status: "blocked",
+            summary: "Docker engine is not reachable from this host.",
+            detail: "open //./pipe/docker_engine: The system cannot find the file specified.",
+            command: "docker info --format {{.ServerVersion}}"
+          }
+        ],
+        providerSandbox: {
+          status: "blocked",
+          summary: "The first provider-backed sandbox attempt should stay paused on this host.",
+          missingRequirements: ["Docker engine: Docker engine is not reachable from this host."],
+          nextSteps: ["Resolve docker engine and rerun `docker info --format {{.ServerVersion}}`."]
+        },
+        boundaries: ["Local host readiness only."]
+      }),
+      {
+        status: 200,
+        headers: { "content-type": "application/json" }
+      }
+    );
+  }) as typeof fetch;
+
+  try {
+    const snapshot = await fetchHostReadinessSnapshot();
+
+    assert.equal(getHostReadinessUrl(), "http://127.0.0.1:9999/exports/host-readiness");
+    assert.equal(requestedUrl, "http://127.0.0.1:9999/exports/host-readiness");
+    assert.equal(snapshot.scope, "host_readiness");
+    assert.equal(snapshot.overall.statusLabel, "Blocked");
+    assert.equal(snapshot.checks[0]?.key, "docker_engine");
   } finally {
     globalThis.fetch = originalFetch;
     if (originalBaseUrl === undefined) {

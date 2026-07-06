@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { CaseStatus, RiskLevel } from "../src/domain.ts";
 import {
+  fetchHostReadinessSnapshot,
   fetchCaseSummaries,
   fetchLatestReleaseRecord,
   fetchLatestRuntimeParityResult,
+  getHostReadinessUrl,
   getLatestReleaseRecordUrl,
   getLatestRuntimeParityUrl,
   getOpenTelemetryExportUrl,
@@ -50,8 +52,10 @@ export default async function ReviewerWorkspacePage({
   const workspaceSnapshotUrl = getWorkspaceSnapshotUrl(initialFilters);
   const telemetryHandoffUrl = getTelemetryHandoffUrl(initialFilters);
   const openTelemetryExportUrl = getOpenTelemetryExportUrl(initialFilters);
+  const hostReadinessUrl = getHostReadinessUrl();
   const releaseRecordUrl = getLatestReleaseRecordUrl(initialFilters);
   const runtimeParityUrl = getLatestRuntimeParityUrl();
+  const hostReadiness = await fetchHostReadinessSnapshot().catch(() => null);
   const releaseRecord = await fetchLatestReleaseRecord(initialFilters).catch(() => null);
   const runtimeParityResult = await fetchLatestRuntimeParityResult().catch(() => null);
   const runtimeParityCiEvidence = runtimeParityResult?.ciEvidence ?? null;
@@ -211,6 +215,87 @@ export default async function ReviewerWorkspacePage({
             </div>
           </div>
         </article>
+      </section>
+
+      <section className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel-stack">
+          <div>
+            <p className="eyebrow">Host readiness</p>
+            <h2>{hostReadiness ? hostReadiness.overall.summary : "Current host prerequisite status"}</h2>
+            <p className="muted">
+              Keep the provider-backed sandbox story honest by separating validated local runtime evidence from Docker, Terraform, and live-provider prerequisites on the current host.
+            </p>
+          </div>
+          <div className="chip-row">
+            <span
+              className={`chip chip-${hostReadiness?.overall.statusLabel === "Blocked" ? "danger" : hostReadiness?.overall.statusLabel === "Watch" ? "warning" : "success"}`}
+            >
+              {hostReadiness?.overall.statusLabel ?? "Unavailable"}
+            </span>
+            <span className="chip chip-neutral">provider-backed sandbox prerequisites</span>
+          </div>
+          <div className="facts-grid">
+            <div className="fact">
+              <strong>Compose contract</strong>
+              <span className="mono">{hostReadiness?.runtime.dockerComposeFile ?? "docker-compose.yml"}</span>
+            </div>
+            <div className="fact">
+              <strong>Terraform sandbox</strong>
+              <span className="mono">{hostReadiness?.runtime.terraformSandboxPath ?? "infra/terraform/sandbox"}</span>
+            </div>
+            <div className="fact">
+              <strong>API base</strong>
+              <span className="mono">{hostReadiness?.runtime.apiBaseUrl ?? "http://127.0.0.1:4317"}</span>
+            </div>
+            <div className="fact">
+              <strong>Provider-backed status</strong>
+              <span className="muted">
+                {hostReadiness?.providerSandbox.summary ?? "Host readiness export is unavailable."}
+              </span>
+            </div>
+          </div>
+          {hostReadiness ? (
+            <div className="detail-grid detail-grid-balanced">
+              <article className="metric-card">
+                <p className="eyebrow">Readiness checks</p>
+                <ul className="response-list">
+                  {hostReadiness.checks.map((check) => (
+                    <li key={check.key}>
+                      <strong>{check.label}:</strong> {check.summary} {check.detail ? `(${check.detail})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+              <article className="metric-card">
+                <p className="eyebrow">Next steps</p>
+                <ul className="response-list">
+                  {hostReadiness.providerSandbox.nextSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ul>
+              </article>
+            </div>
+          ) : (
+            <div className="callout callout-info">
+              Host-readiness export is unavailable. The existing release and runtime-parity artifacts remain the current source of truth.
+            </div>
+          )}
+          {hostReadiness?.providerSandbox.missingRequirements.length ? (
+            <div className="facts-grid">
+              {hostReadiness.providerSandbox.missingRequirements.map((requirement) => (
+                <div key={requirement} className="fact">
+                  <strong>Blocked prerequisite</strong>
+                  <span className="muted">{requirement}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className="filter-actions">
+            <a href={hostReadinessUrl}>Export host-readiness artifact</a>
+            <a href={releaseRecordUrl}>Export latest release record</a>
+            <a href={telemetryHandoffUrl}>Export telemetry handoff</a>
+          </div>
+        </div>
       </section>
 
       <section className="panel" style={{ marginBottom: 24 }}>

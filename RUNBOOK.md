@@ -43,6 +43,18 @@ Expected result:
 - Queue summary, release guidance, request-stage timing analytics, and up to five recent trace samples are exported from the same API-backed reviewer state.
 - Collector notes stay explicitly bounded: they describe how to forward existing signals into a future observability stack, but they do not claim that an external collector, trace backend, or alerting service already exists.
 
+Host-readiness export:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:4317/exports/host-readiness -OutFile host-readiness.json
+```
+
+Expected result:
+
+- The JSON artifact reports the current host status for Docker CLI, Docker Compose, Docker engine connectivity, Terraform CLI, and the live provider base URL.
+- `Blocked` means the first provider-backed sandbox attempt should stay paused on this host even if the deterministic runtime path and existing release evidence still work.
+- The artifact stays explicit about scope: it reports local prerequisite status only, not a successful provider-backed `terraform apply` or a managed deployment target.
+
 OpenTelemetry seam export:
 
 ```powershell
@@ -174,6 +186,7 @@ Expected result:
 20. Use `Export latest runtime parity` when available and confirm the JSON matches the pass/fail summary shown in the release record section.
 21. Open the focus case from the release record, confirm the case-detail page shows whether the current case is the release anchor, and verify the rollback drill evidence matches the exported release record.
 22. From the case-detail release-evidence panel, confirm `Export latest release record`, `Export telemetry handoff`, and the focus-case snapshot links all resolve without leaving the API-backed evidence path.
+23. Use `Export host-readiness artifact` from the workspace and confirm the JSON reports the current Docker, Compose, Terraform, and live-provider prerequisite state instead of pretending the host is ready for a provider-backed sandbox.
 
 ## Human approval
 
@@ -205,6 +218,7 @@ If the live provider times out or returns an invalid response, `POST /cases` ret
 - Release and rollback guidance are operational playbooks derived from queue and case evidence; they do not trigger deployment changes automatically.
 - GitHub Actions now proves the repo-native test path, the in-process seeded smoke path, the containerized API health/readiness path, and the live seeded runtime smoke path before the Next.js build. It still does not cover a separate worker, managed database, or paid deployment target.
 - The Terraform sandbox currently models and validates the disposable runtime contract only. It does not yet provision Docker, a VM, a managed database, or a cloud network.
+- The host-readiness artifact reports current prerequisite status only. It does not claim that Docker or Terraform checks have been reproduced successfully on another machine.
 
 ## Demo reset
 

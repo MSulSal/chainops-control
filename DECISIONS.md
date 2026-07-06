@@ -84,3 +84,7 @@ The next UI step reuses that same release-record export on the case-detail page 
 ## Terraform sandbox tradeoff
 
 The first Terraform slice uses only validated inputs, computed locals, outputs, and `terraform_data` state instead of a provider-backed Docker or cloud target. That is intentionally conservative: this host cannot currently validate Terraform CLI plus a real runtime target, and the product still has no truthful managed-environment story. Capturing the reviewed runtime contract in Terraform now is still useful because it proves variable validation, deployment-shape thinking, and operator handoff without inventing infrastructure behavior that the repository cannot yet test.
+
+## Host-readiness artifact tradeoff
+
+The next sandbox-facing slice exports current host prerequisite status through the same API-backed evidence path instead of relying on an undocumented local checklist. That keeps Docker, Compose, Terraform, and live-provider gaps reviewable from the product itself and makes it explicit why a provider-backed sandbox attempt is blocked on a given machine. The tradeoff is that this slice reports current host readiness only; it does not replace a real provider-backed runtime check or claim a successful managed deployment path.

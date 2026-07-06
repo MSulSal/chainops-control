@@ -9,6 +9,7 @@ import type {
   RiskLevel
 } from "./domain.ts";
 import type { DemoScenarioName } from "./demo-scenario.ts";
+import type { HostReadinessSnapshot } from "./host-readiness.ts";
 import type { ReleaseRecordSnapshot } from "./incident-snapshot.ts";
 import type { RuntimeParityResult } from "./runtime-parity.ts";
 
@@ -152,6 +153,18 @@ export async function fetchLatestReleaseRecord(
   return (await response.json()) as ReleaseRecordSnapshot;
 }
 
+export async function fetchHostReadinessSnapshot(): Promise<HostReadinessSnapshot> {
+  const response = await fetch(`${getApiBaseUrl()}/exports/host-readiness`, {
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`failed to load host readiness: ${response.status}`);
+  }
+
+  return (await response.json()) as HostReadinessSnapshot;
+}
+
 export function getWorkspaceSnapshotUrl(filters: ReviewerWorkspaceFilters = {}): string {
   const query = buildCaseListQuery(filters);
   return `${getApiBaseUrl()}/exports/workspace${query ? `?${query}` : ""}`;
@@ -174,6 +187,10 @@ export function getLatestReleaseRecordUrl(filters: ReviewerWorkspaceFilters = {}
 
 export function getLatestRuntimeParityUrl(): string {
   return `${getApiBaseUrl()}/exports/runtime-parity/latest`;
+}
+
+export function getHostReadinessUrl(): string {
+  return `${getApiBaseUrl()}/exports/host-readiness`;
 }
 
 export function getCaseSnapshotUrl(caseId: string): string {
