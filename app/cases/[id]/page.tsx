@@ -3,10 +3,15 @@ import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
   fetchCaseDetail,
+  fetchLatestReleaseRecord,
   getCaseSnapshotUrl,
+  getLatestReleaseRecordUrl,
+  getOpenTelemetryExportUrl,
+  getTelemetryHandoffUrl,
   submitCaseDecision
 } from "../../../src/reviewer-data";
 import {
+  getCaseReleaseRecordSummary,
   getCaseOperationalGuide,
   getCaseStageTrace,
   formatTimestamp,
@@ -41,6 +46,12 @@ export default async function CaseDetailPage({
   const stageTrace = getCaseStageTrace(detail.caseRecord, detail.auditEvents);
   const operationalGuide = getCaseOperationalGuide(detail.caseRecord, detail.auditEvents);
   const caseSnapshotUrl = getCaseSnapshotUrl(detail.caseRecord.id);
+  const releaseRecordUrl = getLatestReleaseRecordUrl();
+  const telemetryHandoffUrl = getTelemetryHandoffUrl();
+  const openTelemetryExportUrl = getOpenTelemetryExportUrl();
+  const releaseRecord = await fetchLatestReleaseRecord().catch(() => null);
+  const releaseRecordSummary = releaseRecord ? getCaseReleaseRecordSummary(detail.caseRecord, releaseRecord) : null;
+  const releaseRecordRuntimeParity = releaseRecord?.verification.runtimeParity.lastResult ?? null;
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -197,6 +208,90 @@ export default async function CaseDetailPage({
                 </article>
               ))}
             </div>
+          </div>
+        </div>
+
+        <div className="panel">
+          <div className="panel-stack">
+            <div>
+              <p className="eyebrow">Release evidence</p>
+              <h2>{releaseRecordSummary?.title ?? "Latest release record context"}</h2>
+              <p className="muted">
+                {releaseRecordSummary?.summary ??
+                  "The case page can still export its own evidence even if the latest release record preview is temporarily unavailable."}
+              </p>
+            </div>
+            <div className="chip-row">
+              <span className={`chip chip-${releaseRecordSummary?.tone ?? "neutral"}`}>
+                {releaseRecord?.release.statusLabel ?? "Record unavailable"}
+              </span>
+              <span className="chip chip-neutral">
+                {releaseRecord ? `${releaseRecord.release.version} on ${releaseRecord.release.channel}` : "queue-level release export"}
+              </span>
+            </div>
+            <div className="filter-actions">
+              <a href={releaseRecordUrl}>Export latest release record</a>
+              <a href={telemetryHandoffUrl}>Export telemetry handoff</a>
+              <a href={openTelemetryExportUrl}>Export OpenTelemetry seam</a>
+            </div>
+            <div className="facts-grid">
+              <div className="fact">
+                <strong>Focus-case relation</strong>
+                <span className="muted">
+                  {releaseRecordSummary?.focusCaseLabel ?? "Latest focus-case context is unavailable."}
+                </span>
+              </div>
+              <div className="fact">
+                <strong>Focus trace</strong>
+                <span className="mono">{releaseRecord?.evidence.focusTraceId ?? "Not recorded"}</span>
+              </div>
+              <div className="fact">
+                <strong>Rollback decision</strong>
+                <span className="muted">{releaseRecord?.rollback.decision ?? "Release record unavailable."}</span>
+              </div>
+              <div className="fact">
+                <strong>Last parity check</strong>
+                <span className="muted">
+                  {releaseRecordRuntimeParity
+                    ? `${releaseRecordRuntimeParity.status.toUpperCase()} at ${formatTimestamp(releaseRecordRuntimeParity.checkedAt)}`
+                    : "No persisted runtime parity result is attached to the latest release record."}
+                </span>
+              </div>
+            </div>
+            {releaseRecord ? (
+              <div className="detail-grid detail-grid-balanced">
+                <article className="metric-card">
+                  <p className="eyebrow">Rollback drill context</p>
+                  <ul className="response-list">
+                    {releaseRecord.rollback.evidence.map((evidence) => (
+                      <li key={evidence}>{evidence}</li>
+                    ))}
+                  </ul>
+                </article>
+                <article className="metric-card">
+                  <p className="eyebrow">Focus-case links</p>
+                  <ul className="response-list">
+                    <li>
+                      {releaseRecordSummary?.focusCasePath ? (
+                        <Link href={releaseRecordSummary.focusCasePath}>Open focus case detail</Link>
+                      ) : (
+                        "No focus case path is attached to the latest release record."
+                      )}
+                    </li>
+                    <li>
+                      {releaseRecordSummary?.focusCaseExportPath ? (
+                        <a href={releaseRecordSummary.focusCaseExportPath}>Export focus case snapshot</a>
+                      ) : (
+                        "No focus case export is attached to the latest release record."
+                      )}
+                    </li>
+                    <li>
+                      <a href={caseSnapshotUrl}>Export this case snapshot</a>
+                    </li>
+                  </ul>
+                </article>
+              </div>
+            ) : null}
           </div>
         </div>
 

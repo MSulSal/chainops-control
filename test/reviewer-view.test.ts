@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   getActiveFilterChips,
   getCaseOperationalGuide,
+  getCaseReleaseRecordSummary,
   getCaseStageTrace,
   getQueueAnalyticsCards,
   getCaseDetailCallout,
@@ -362,4 +363,284 @@ test("builds retry-safe incident guidance for a failed case", () => {
   assert.equal(guide.tone, "danger");
   assert.match(guide.actions[1], /same Idempotency-Key/);
   assert.match(guide.evidence[1], /timeout/);
+});
+
+test("marks the current case as the release-record focus when paths match", () => {
+  const summary = getCaseReleaseRecordSummary(
+    {
+      id: "case-4",
+      walletAddress: "0x1111111111111111111111111111111111111111",
+      status: "ingestion_failed",
+      risk: {
+        level: "low",
+        score: 0,
+        indicators: ["transaction sample unavailable until provider retry succeeds"]
+      },
+      transactions: [],
+      sourceMetadata: {
+        provider: "etherscan-account-txlist",
+        mode: "live",
+        network: "ethereum-mainnet",
+        fetchedAt: "2026-07-01T10:00:00.000Z",
+        attemptCount: 1,
+        timeoutMs: 1500,
+        transactionCount: 0,
+        errorCode: "timeout",
+        retriable: true
+      },
+      traceId: "trace-failed-1",
+      createdAt: "2026-07-01T10:00:00.000Z"
+    },
+    {
+      generatedAt: "2026-07-06T18:00:00.000Z",
+      scope: "release_record",
+      filters: { limit: 20 },
+      release: {
+        version: "0.1.0",
+        channel: "local_container_runtime",
+        statusLabel: "Hold",
+        summary: "Runtime parity failed for the current release candidate.",
+        containerImages: {
+          api: "local Dockerfile build via docker compose service api",
+          postgres: "postgres:16-alpine"
+        },
+        reviewerWorkspacePath: "/"
+      },
+      verification: {
+        requiredCommands: [],
+        endpoints: {
+          healthPath: "/health",
+          readyPath: "/ready",
+          demoResetPath: "/demo/reset",
+          workspaceExportPath: "/exports/workspace",
+          telemetryExportPath: "/exports/telemetry",
+          openTelemetryExportPath: "/exports/telemetry/opentelemetry",
+          releaseRecordPath: "/exports/releases/latest"
+        },
+        seededScenario: {
+          name: "incident_review_v1",
+          expectedTraceIds: ["trace-demo-provider-timeout"]
+        },
+        runtimeParity: {
+          comparedExports: ["/exports/releases/latest"],
+          ignoredFields: ["generatedAt"],
+          failureMode: "Treat the runtime as stale.",
+          lastResult: null,
+          reviewArtifact: null
+        }
+      },
+      evidence: {
+        summary: {
+          total: 1,
+          pendingReviewCount: 0,
+          approvedCount: 0,
+          rejectedCount: 0,
+          failedIngestionCount: 1,
+          highRiskCount: 1,
+          mediumRiskCount: 0,
+          lowRiskCount: 0
+        },
+        analytics: {
+          statusTransitions: {
+            enteredReviewCount: 0,
+            approvedCount: 0,
+            rejectedCount: 0,
+            failedIngestionCount: 1
+          },
+          reviewLatency: {
+            reviewedCount: 0,
+            averageHours: null,
+            maxHours: null,
+            oldestPendingHours: null
+          },
+          operationalMetrics: {
+            intakePipeline: {
+              averageDurationMs: null,
+              maxDurationMs: null,
+              completedCount: 0,
+              failedCount: 1
+            },
+            providerFetch: {
+              averageDurationMs: null,
+              maxDurationMs: null,
+              completedCount: 0,
+              failedCount: 1
+            },
+            reviewerDecision: {
+              averageDurationMs: null,
+              maxDurationMs: null,
+              completedCount: 0,
+              failedCount: 0
+            }
+          },
+          timeline: []
+        },
+        releaseGuide: {
+          title: "Hold release",
+          tone: "danger",
+          statusLabel: "Hold",
+          summary: "Runtime drift needs review.",
+          releaseDecision: "Do not treat this release as current.",
+          rollbackDecision: "Roll back after comparing the stale runtime evidence.",
+          actions: ["Review the failed export path."],
+          evidence: ["OpenTelemetry export was missing."]
+        },
+        telemetryHandoffPath: "/exports/telemetry",
+        workspaceSnapshotPath: "/exports/workspace",
+        focusCasePath: "/cases/case-4",
+        focusCaseExportPath: "/exports/cases/case-4",
+        focusTraceId: "trace-failed-1"
+      },
+      rollback: {
+        decision: "Roll back after comparing the stale runtime evidence.",
+        triggers: ["Missing required export."],
+        evidence: ["Focus case case-4 / trace trace-failed-1."]
+      },
+      boundaries: ["Local runtime contract only."]
+    }
+  );
+
+  assert.equal(summary.tone, "danger");
+  assert.equal(summary.focusCasePath, "/cases/case-4");
+  assert.match(summary.summary, /rollback drill anchor/i);
+});
+
+test("points case detail users back to the release focus case when another case anchors the record", () => {
+  const summary = getCaseReleaseRecordSummary(
+    {
+      id: "case-9",
+      walletAddress: "0x9999999999999999999999999999999999999999",
+      status: "approved",
+      risk: {
+        level: "medium",
+        score: 45,
+        indicators: ["fixture comparison case"]
+      },
+      transactions: [],
+      sourceMetadata: {
+        provider: "deterministic-fixture",
+        mode: "fixture",
+        network: "ethereum-mainnet",
+        fetchedAt: "2026-07-01T10:00:00.000Z",
+        attemptCount: 1,
+        timeoutMs: 1500,
+        transactionCount: 3
+      },
+      traceId: "trace-comparison-1",
+      createdAt: "2026-07-01T10:00:00.000Z",
+      reviewedAt: "2026-07-01T10:05:00.000Z",
+      reviewerNote: "Comparison evidence."
+    },
+    {
+      generatedAt: "2026-07-06T18:00:00.000Z",
+      scope: "release_record",
+      filters: { limit: 20 },
+      release: {
+        version: "0.1.0",
+        channel: "local_container_runtime",
+        statusLabel: "Ready",
+        summary: "The queue is ready for a controlled release.",
+        containerImages: {
+          api: "local Dockerfile build via docker compose service api",
+          postgres: "postgres:16-alpine"
+        },
+        reviewerWorkspacePath: "/"
+      },
+      verification: {
+        requiredCommands: [],
+        endpoints: {
+          healthPath: "/health",
+          readyPath: "/ready",
+          demoResetPath: "/demo/reset",
+          workspaceExportPath: "/exports/workspace",
+          telemetryExportPath: "/exports/telemetry",
+          openTelemetryExportPath: "/exports/telemetry/opentelemetry",
+          releaseRecordPath: "/exports/releases/latest"
+        },
+        seededScenario: {
+          name: "incident_review_v1",
+          expectedTraceIds: ["trace-demo-approved-low"]
+        },
+        runtimeParity: {
+          comparedExports: ["/exports/releases/latest"],
+          ignoredFields: ["generatedAt"],
+          failureMode: "Treat the runtime as stale.",
+          lastResult: null,
+          reviewArtifact: null
+        }
+      },
+      evidence: {
+        summary: {
+          total: 2,
+          pendingReviewCount: 0,
+          approvedCount: 2,
+          rejectedCount: 0,
+          failedIngestionCount: 0,
+          highRiskCount: 0,
+          mediumRiskCount: 2,
+          lowRiskCount: 0
+        },
+        analytics: {
+          statusTransitions: {
+            enteredReviewCount: 2,
+            approvedCount: 2,
+            rejectedCount: 0,
+            failedIngestionCount: 0
+          },
+          reviewLatency: {
+            reviewedCount: 2,
+            averageHours: 1,
+            maxHours: 1.2,
+            oldestPendingHours: null
+          },
+          operationalMetrics: {
+            intakePipeline: {
+              averageDurationMs: 100,
+              maxDurationMs: 120,
+              completedCount: 2,
+              failedCount: 0
+            },
+            providerFetch: {
+              averageDurationMs: 120,
+              maxDurationMs: 150,
+              completedCount: 2,
+              failedCount: 0
+            },
+            reviewerDecision: {
+              averageDurationMs: 90,
+              maxDurationMs: 100,
+              completedCount: 2,
+              failedCount: 0
+            }
+          },
+          timeline: []
+        },
+        releaseGuide: {
+          title: "Ready for a controlled release",
+          tone: "success",
+          statusLabel: "Ready",
+          summary: "The filtered queue has no persisted ingestion failures.",
+          releaseDecision: "Proceed with a narrow rollout.",
+          rollbackDecision: "Keep rollback guidance documented.",
+          actions: ["Spot-check one recent approved case."],
+          evidence: ["2 visible cases in the filtered queue."]
+        },
+        telemetryHandoffPath: "/exports/telemetry",
+        workspaceSnapshotPath: "/exports/workspace",
+        focusCasePath: "/cases/case-1",
+        focusCaseExportPath: "/exports/cases/case-1",
+        focusTraceId: "trace-demo-approved-low"
+      },
+      rollback: {
+        decision: "Keep rollback guidance documented.",
+        triggers: ["Compare later regressions against the focus case."],
+        evidence: ["Focus case case-1 / trace trace-demo-approved-low."]
+      },
+      boundaries: ["Local runtime contract only."]
+    }
+  );
+
+  assert.equal(summary.tone, "warning");
+  assert.equal(summary.focusCasePath, "/cases/case-1");
+  assert.match(summary.focusCaseLabel, /latest focus case/i);
 });

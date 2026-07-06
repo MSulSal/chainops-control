@@ -29,6 +29,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - A GitHub Actions runtime-parity evidence artifact that bundles the latest parity JSON, the latest release record when the live export is reachable, and a capture summary reviewers can download directly from CI.
 - Release evidence that now carries the matching GitHub Actions run URL, artifact name, and expected bundle files inside the persisted runtime-parity result so reviewers can jump from a stale-runtime verdict to the exact CI artifact without opening workflow YAML.
 - A reviewer-workspace release-record preview that surfaces the current version, release status, verification commands, focus-case links, rollback triggers, and product boundaries directly in the UI instead of requiring a JSON download first.
+- A case-detail release-evidence panel that surfaces the latest release-record focus case, rollback drill evidence, parity status, and export links so queue-level release context is visible from both workspace and case views.
 - Duplicate-intake protection through the `Idempotency-Key` header.
 - Provider timeout/failure persistence and idempotent recovery on retry.
 - Human approval/rejection endpoint.
@@ -107,8 +108,7 @@ Example approval body:
 
 ## Roadmap
 
-1. Surface the release-record focus case, export links, and rollback drill context directly on the case-detail page so queue-level release evidence can be inspected from both workspace and case views.
-2. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
+1. Add a provider-backed disposable target only after the contract review path can be validated on a host with Terraform and Docker access.
 
 ## Boundaries
 

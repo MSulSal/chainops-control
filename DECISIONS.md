@@ -77,6 +77,10 @@ The next reviewability step stores GitHub Actions run metadata and artifact retr
 
 The next UI step renders the existing release-record export directly in the reviewer workspace instead of hand-maintaining a second release summary inside React. That keeps version, verification commands, rollback triggers, focus-case links, and explicit boundaries tied to the same API artifact that CI and operators already download, while avoiding duplicated client state and drift between the UI and the release contract.
 
+## Case-detail release-evidence tradeoff
+
+The next UI step reuses that same release-record export on the case-detail page instead of creating a separate case-only release summary. That keeps the current focus case, rollback drill evidence, and parity verdict attached to one exported artifact while making it explicit whether the viewed case is the release anchor or comparison evidence from the same queue.
+
 ## Terraform sandbox tradeoff
 
 The first Terraform slice uses only validated inputs, computed locals, outputs, and `terraform_data` state instead of a provider-backed Docker or cloud target. That is intentionally conservative: this host cannot currently validate Terraform CLI plus a real runtime target, and the product still has no truthful managed-environment story. Capturing the reviewed runtime contract in Terraform now is still useful because it proves variable validation, deployment-shape thinking, and operator handoff without inventing infrastructure behavior that the repository cannot yet test.

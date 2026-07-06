@@ -22,6 +22,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 21: carrying the artifact name, run URL, and expected bundle files inside the release evidence makes failure review faster because the operator can jump straight from the runtime verdict to the exact downloadable CI bundle.
 - Applied in slice 22: the cleanest way to make release evidence explainable in the workspace was to fetch and render the existing release-record artifact directly instead of reconstructing a second client-only summary that could drift from the API contract.
 - Applied in slice 22: showing verification commands, focus-case links, rollback triggers, and explicit boundaries in the same release panel makes incident-review stories easier to explain because the UI and exported JSON now describe the same operational contract.
+- Applied in slice 23: the cleanest way to make case-detail release context honest was to reuse the same exported release record there too, then describe whether the current case is the rollback drill anchor instead of inventing a second case-only release model.
+- Applied in slice 23: carrying focus-case links, rollback evidence, and parity status into the case page makes it easier to explain how queue-level release guidance connects back to one concrete trace without leaving the existing API boundary.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -87,6 +89,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 19: a parity gate is easier to operate when its last result is persisted and queryable through the same API/reviewer surface, because release reviewers can see stale-runtime evidence even when they are not the ones who ran the smoke command.
 - Applied in slice 20: artifact capture should happen before teardown and with `if: always()` so reviewers still get failure evidence when the runtime-parity gate fails.
 - Applied in slice 22: release evidence stays honest when the UI previews the same exported record the API serves, because reviewers can inspect the current operational contract without relying on a separate manually maintained checklist.
+- Applied in slice 23: release evidence becomes easier to debug when the case page can say explicitly whether the viewed case is the current release anchor or a comparison case, because rollback drills stay attached to one exported focus path.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks

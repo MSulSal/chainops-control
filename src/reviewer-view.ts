@@ -9,6 +9,7 @@ import type {
   CaseSummary,
   SourceMetadata
 } from "./domain.ts";
+import type { ReleaseRecordSnapshot } from "./incident-snapshot.ts";
 
 type StatusTone = "neutral" | "warning" | "danger" | "success";
 
@@ -42,6 +43,15 @@ export type OperationalGuide = {
   rollbackDecision: string;
   actions: string[];
   evidence: string[];
+};
+
+export type CaseReleaseRecordSummary = {
+  title: string;
+  tone: StatusTone;
+  summary: string;
+  focusCaseLabel: string;
+  focusCasePath: string | null;
+  focusCaseExportPath: string | null;
 };
 
 export function getStatusCopy(status: CaseStatus): StatusCopy {
@@ -505,6 +515,50 @@ export function getCaseOperationalGuide(caseRecord: CaseRecord, auditEvents: Aud
   };
 }
 
+export function getCaseReleaseRecordSummary(
+  caseRecord: CaseRecord,
+  releaseRecord: ReleaseRecordSnapshot
+): CaseReleaseRecordSummary {
+  const focusCasePath = releaseRecord.evidence.focusCasePath;
+  const focusCaseExportPath = releaseRecord.evidence.focusCaseExportPath;
+  const currentCasePath = `/cases/${caseRecord.id}`;
+  const releaseTone = getReleaseStatusTone(releaseRecord.release.statusLabel);
+
+  if (!focusCasePath) {
+    return {
+      title: "Latest release record has no focus case",
+      tone: "neutral",
+      summary:
+        "The current filtered release record did not pick a focus case, so use the rollback triggers and export links as queue-level guidance only.",
+      focusCaseLabel: "No focus case is attached to the latest release record.",
+      focusCasePath: null,
+      focusCaseExportPath: null
+    };
+  }
+
+  if (focusCasePath === currentCasePath) {
+    return {
+      title: "This case anchors the latest release record",
+      tone: releaseTone,
+      summary:
+        "The current release record points to this case as the rollback drill anchor, so this detail view now carries the same focus path the workspace release panel exports.",
+      focusCaseLabel: "This case is the current release focus case.",
+      focusCasePath,
+      focusCaseExportPath
+    };
+  }
+
+  return {
+    title: "Compare this case against the release focus case",
+    tone: releaseTone === "success" ? "warning" : releaseTone,
+    summary:
+      "The latest release record is anchored to another case, so use that focus case for the rollback drill and treat this detail view as comparison evidence from the same queue.",
+    focusCaseLabel: `Latest focus case: ${focusCasePath}.`,
+    focusCasePath,
+    focusCaseExportPath
+  };
+}
+
 function formatHours(value: number | null): string {
   if (value == null) {
     return "n/a";
@@ -564,4 +618,17 @@ function getProviderFailureDetail(event: AuditEvent): string {
 function getReviewerDecisionDetail(event: AuditEvent): string {
   const note = typeof event.details.note === "string" && event.details.note ? event.details.note : "Reviewer note recorded.";
   return note;
+}
+
+function getReleaseStatusTone(statusLabel: ReleaseRecordSnapshot["release"]["statusLabel"]): StatusTone {
+  switch (statusLabel) {
+    case "Hold":
+      return "danger";
+    case "Watch":
+      return "warning";
+    case "Ready":
+      return "success";
+    default:
+      return "neutral";
+  }
 }

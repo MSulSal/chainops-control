@@ -172,6 +172,8 @@ Expected result:
 18. Confirm the release record section shows the last runtime parity result, including pass/fail status, checked base URL, per-export evidence, and the GitHub Actions artifact/run hint when the latest parity result came from CI.
 19. Confirm the release record section also previews the required commands, focus-case links, rollback triggers, and boundaries from the same exported artifact instead of only download links.
 20. Use `Export latest runtime parity` when available and confirm the JSON matches the pass/fail summary shown in the release record section.
+21. Open the focus case from the release record, confirm the case-detail page shows whether the current case is the release anchor, and verify the rollback drill evidence matches the exported release record.
+22. From the case-detail release-evidence panel, confirm `Export latest release record`, `Export telemetry handoff`, and the focus-case snapshot links all resolve without leaving the API-backed evidence path.
 
 ## Human approval
 
