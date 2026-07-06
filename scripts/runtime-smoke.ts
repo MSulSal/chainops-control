@@ -30,6 +30,7 @@ const artifactFiles = [
 ];
 const ignoredFields = [
   "generatedAt",
+  "verification.hostReadiness.lastResult.generatedAt",
   "queueEvidence.analytics.reviewLatency.oldestPendingHours",
   "queueEvidence.releaseGuide.evidence[*] old pending-review age text",
   "evidence.analytics.reviewLatency.oldestPendingHours",

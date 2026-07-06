@@ -43,11 +43,47 @@ test("fetches the latest release record with reviewer filters", async () => {
             workspaceExportPath: "/exports/workspace",
             telemetryExportPath: "/exports/telemetry",
             openTelemetryExportPath: "/exports/telemetry/opentelemetry",
+            hostReadinessPath: "/exports/host-readiness",
             releaseRecordPath: "/exports/releases/latest"
           },
           seededScenario: {
             name: "incident_review_v1",
             expectedTraceIds: ["trace-demo-provider-timeout"]
+          },
+          hostReadiness: {
+            artifactPath: "/exports/host-readiness",
+            failureMode: "Treat the first provider-backed sandbox attempt as blocked.",
+            lastResult: {
+              generatedAt: "2026-07-06T20:00:00.000Z",
+              scope: "host_readiness",
+              overall: {
+                statusLabel: "Blocked",
+                summary: "Provider-backed sandbox validation is blocked on this host until Docker engine and Terraform CLI are fixed."
+              },
+              runtime: {
+                dockerComposeFile: "docker-compose.yml",
+                terraformSandboxPath: "infra/terraform/sandbox",
+                reviewerWorkspacePath: "/",
+                apiBaseUrl: "http://127.0.0.1:4317"
+              },
+              checks: [
+                {
+                  key: "docker_engine",
+                  label: "Docker engine",
+                  status: "blocked",
+                  summary: "Docker engine is not reachable from this host.",
+                  detail: "open //./pipe/docker_engine: The system cannot find the file specified.",
+                  command: "docker info --format {{.ServerVersion}}"
+                }
+              ],
+              providerSandbox: {
+                status: "blocked",
+                summary: "The first provider-backed sandbox attempt should stay paused on this host.",
+                missingRequirements: ["Docker engine: Docker engine is not reachable from this host."],
+                nextSteps: ["Resolve docker engine and rerun `docker info --format {{.ServerVersion}}`."]
+              },
+              boundaries: ["Local host readiness only."]
+            }
           },
           runtimeParity: {
             comparedExports: ["/exports/telemetry", "/exports/releases/latest"],
@@ -144,6 +180,7 @@ test("fetches the latest release record with reviewer filters", async () => {
     );
     assert.equal(record.scope, "release_record");
     assert.equal(record.release.version, "0.1.0");
+    assert.equal(record.verification.hostReadiness.lastResult?.overall.statusLabel, "Blocked");
     assert.equal(record.evidence.focusTraceId, "trace-demo-provider-timeout");
   } finally {
     globalThis.fetch = originalFetch;

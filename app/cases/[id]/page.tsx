@@ -51,6 +51,7 @@ export default async function CaseDetailPage({
   const openTelemetryExportUrl = getOpenTelemetryExportUrl();
   const releaseRecord = await fetchLatestReleaseRecord().catch(() => null);
   const releaseRecordSummary = releaseRecord ? getCaseReleaseRecordSummary(detail.caseRecord, releaseRecord) : null;
+  const releaseRecordHostReadiness = releaseRecord?.verification.hostReadiness.lastResult ?? null;
   const releaseRecordRuntimeParity = releaseRecord?.verification.runtimeParity.lastResult ?? null;
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
@@ -257,6 +258,14 @@ export default async function CaseDetailPage({
                     : "No persisted runtime parity result is attached to the latest release record."}
                 </span>
               </div>
+              <div className="fact">
+                <strong>Host readiness</strong>
+                <span className="muted">
+                  {releaseRecordHostReadiness
+                    ? `${releaseRecordHostReadiness.overall.statusLabel}: ${releaseRecordHostReadiness.providerSandbox.summary}`
+                    : "No host-readiness artifact is attached to the latest release record."}
+                </span>
+              </div>
             </div>
             {releaseRecord ? (
               <div className="detail-grid detail-grid-balanced">
@@ -269,7 +278,7 @@ export default async function CaseDetailPage({
                   </ul>
                 </article>
                 <article className="metric-card">
-                  <p className="eyebrow">Focus-case links</p>
+                  <p className="eyebrow">Focus-case and host links</p>
                   <ul className="response-list">
                     <li>
                       {releaseRecordSummary?.focusCasePath ? (
@@ -288,8 +297,17 @@ export default async function CaseDetailPage({
                     <li>
                       <a href={caseSnapshotUrl}>Export this case snapshot</a>
                     </li>
+                    <li>
+                      <a href={releaseRecord.verification.hostReadiness.artifactPath}>Export host-readiness artifact</a>
+                    </li>
                   </ul>
                 </article>
+              </div>
+            ) : null}
+            {releaseRecordHostReadiness?.providerSandbox.missingRequirements.length ? (
+              <div className="callout callout-info">
+                <strong>{`Provider-backed host status: ${releaseRecordHostReadiness.overall.statusLabel}.`}</strong>{" "}
+                {releaseRecordHostReadiness.providerSandbox.missingRequirements.join(" ")}
               </div>
             ) : null}
           </div>

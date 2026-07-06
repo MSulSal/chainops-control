@@ -88,3 +88,7 @@ The first Terraform slice uses only validated inputs, computed locals, outputs, 
 ## Host-readiness artifact tradeoff
 
 The next sandbox-facing slice exports current host prerequisite status through the same API-backed evidence path instead of relying on an undocumented local checklist. That keeps Docker, Compose, Terraform, and live-provider gaps reviewable from the product itself and makes it explicit why a provider-backed sandbox attempt is blocked on a given machine. The tradeoff is that this slice reports current host readiness only; it does not replace a real provider-backed runtime check or claim a successful managed deployment path.
+
+## Release-record host-readiness tradeoff
+
+The next reviewability step embeds that existing host-readiness artifact inside the release record instead of introducing a second release-only host checklist or refetching a separate summary in every UI surface. That keeps runtime parity, rollback context, and provider-backed sandbox blockers attached to one exported contract while preserving the honest boundary: the artifact still reports current host prerequisites only and does not claim a successful provider-backed environment check.

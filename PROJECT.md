@@ -40,6 +40,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 22: surfaced the latest release-record export directly in the reviewer workspace with a live preview of version, release status, verification commands, focus-case links, rollback triggers, and product boundaries so CI-linked runtime evidence is visible without downloading JSON first.
 - Slice 23: surfaced that same release-record focus case, rollback drill evidence, parity summary, and export path directly on the case-detail page so queue-level release context is visible from both the workspace and the active case view.
 - Slice 24: added a host-readiness export plus reviewer-workspace diagnostics that report Docker, Compose, Terraform, and live-provider prerequisites so provider-backed sandbox blockers stay explicit on the current host before the next disposable-target attempt.
+- Slice 25: threaded that host-readiness artifact into the latest release record and both release-evidence views so runtime parity and provider-backed sandbox blockers now stay attached to one bounded export path.
 
 ## Success evidence
 

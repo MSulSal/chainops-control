@@ -190,6 +190,18 @@ function normalizeReleaseRecordSnapshot(snapshot: ReleaseRecordSnapshot) {
   return {
     ...snapshot,
     generatedAt: "<ignored>",
+    verification: {
+      ...snapshot.verification,
+      hostReadiness: snapshot.verification.hostReadiness.lastResult
+        ? {
+            ...snapshot.verification.hostReadiness,
+            lastResult: {
+              ...snapshot.verification.hostReadiness.lastResult,
+              generatedAt: "<ignored>"
+            }
+          }
+        : snapshot.verification.hostReadiness
+    },
     evidence: {
       ...snapshot.evidence,
       analytics: {

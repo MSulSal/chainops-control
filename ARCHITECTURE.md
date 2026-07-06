@@ -126,6 +126,10 @@ The next release-evidence step also stays inside that same contract. The case-de
 
 The next disposable-target step still stays inside the existing API-backed evidence path instead of becoming a separate local checklist. `GET /exports/host-readiness` now probes Docker CLI, Docker Compose, Docker engine connectivity, Terraform CLI, and the configured live-provider base URL from the current host, then exposes one bounded artifact plus reviewer-workspace panel that explains whether the first provider-backed sandbox attempt is ready, incomplete, or blocked. That keeps host-tooling blockers visible alongside the current runtime/release evidence without pretending that the host already passed a provider-backed `terraform apply`.
 
+## 2026-07-06 release-record host-readiness decision
+
+The next release-evidence step still stays inside that same artifact boundary. `GET /exports/releases/latest` now embeds the latest host-readiness snapshot and the `/exports/host-readiness` path alongside runtime parity, verification commands, focus-case links, and rollback evidence so the same release record can explain both runtime drift and why a provider-backed sandbox attempt is still paused on the current host. That keeps release review tied to one exported contract instead of a separate host-only checklist or a second React summary that could drift.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

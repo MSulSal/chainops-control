@@ -57,6 +57,7 @@ export default async function ReviewerWorkspacePage({
   const runtimeParityUrl = getLatestRuntimeParityUrl();
   const hostReadiness = await fetchHostReadinessSnapshot().catch(() => null);
   const releaseRecord = await fetchLatestReleaseRecord(initialFilters).catch(() => null);
+  const releaseRecordHostReadiness = releaseRecord?.verification.hostReadiness.lastResult ?? null;
   const runtimeParityResult = await fetchLatestRuntimeParityResult().catch(() => null);
   const runtimeParityCiEvidence = runtimeParityResult?.ciEvidence ?? null;
   const releaseRecordRuntimeParity = releaseRecord?.verification.runtimeParity.lastResult ?? null;
@@ -223,7 +224,7 @@ export default async function ReviewerWorkspacePage({
             <p className="eyebrow">Host readiness</p>
             <h2>{hostReadiness ? hostReadiness.overall.summary : "Current host prerequisite status"}</h2>
             <p className="muted">
-              Keep the provider-backed sandbox story honest by separating validated local runtime evidence from Docker, Terraform, and live-provider prerequisites on the current host.
+              Keep the provider-backed sandbox story honest by separating validated local runtime evidence from Docker, Terraform, and live-provider prerequisites on the current host. The latest release record now embeds the same host snapshot.
             </p>
           </div>
           <div className="chip-row">
@@ -333,6 +334,14 @@ export default async function ReviewerWorkspacePage({
               </span>
             </div>
             <div className="fact">
+              <strong>Host readiness</strong>
+              <span className="muted">
+                {releaseRecordHostReadiness
+                  ? `${releaseRecordHostReadiness.overall.statusLabel}: ${releaseRecordHostReadiness.providerSandbox.summary}`
+                  : "No host-readiness snapshot is attached to the latest release record."}
+              </span>
+            </div>
+            <div className="fact">
               <strong>CI review path</strong>
               <span className="muted">
                 {releaseRecordReviewArtifact
@@ -356,6 +365,24 @@ export default async function ReviewerWorkspacePage({
               No runtime parity artifact is stored yet. The release record will stay incomplete until `npm run smoke:runtime` writes one.
             </div>
           )}
+          {releaseRecordHostReadiness ? (
+            <div
+              className={`callout ${
+                releaseRecordHostReadiness.overall.statusLabel === "Blocked"
+                  ? "callout-danger"
+                  : releaseRecordHostReadiness.overall.statusLabel === "Watch"
+                    ? "callout-info"
+                    : "callout-success"
+              }`}
+            >
+              <strong>{`Host readiness: ${releaseRecordHostReadiness.overall.statusLabel}.`}</strong>{" "}
+              {releaseRecordHostReadiness.providerSandbox.summary}
+            </div>
+          ) : (
+            <div className="callout callout-info">
+              No host-readiness artifact is embedded in the latest release record yet. Use `GET /exports/host-readiness` to capture the current prerequisite state.
+            </div>
+          )}
           {releaseRecord ? (
             <div className="detail-grid detail-grid-balanced">
               <article className="metric-card">
@@ -365,6 +392,7 @@ export default async function ReviewerWorkspacePage({
                   <li>{`Reviewer workspace: ${releaseRecord.release.reviewerWorkspacePath}`}</li>
                   <li>{`Focus trace: ${releaseRecord.evidence.focusTraceId ?? "No focus trace in current filtered queue."}`}</li>
                   <li>{`Rollback decision: ${releaseRecord.rollback.decision}`}</li>
+                  <li>{`Provider-backed host status: ${releaseRecordHostReadiness?.overall.statusLabel ?? "Unavailable"}`}</li>
                 </ul>
               </article>
               <article className="metric-card">
@@ -395,6 +423,10 @@ export default async function ReviewerWorkspacePage({
                 <span className="mono">{releaseRecord.verification.endpoints.openTelemetryExportPath}</span>
               </div>
               <div className="fact">
+                <strong>Host-readiness export</strong>
+                <span className="mono">{releaseRecord.verification.endpoints.hostReadinessPath}</span>
+              </div>
+              <div className="fact">
                 <strong>Release record export</strong>
                 <span className="mono">{releaseRecord.verification.endpoints.releaseRecordPath}</span>
               </div>
@@ -410,6 +442,29 @@ export default async function ReviewerWorkspacePage({
                   {releaseRecord.evidence.focusCaseExportPath ?? "No focus case export is available in the current filtered queue."}
                 </span>
               </div>
+            </div>
+          ) : null}
+          {releaseRecordHostReadiness ? (
+            <div className="detail-grid detail-grid-balanced">
+              <article className="metric-card">
+                <p className="eyebrow">Host blockers in release context</p>
+                <ul className="response-list">
+                  {releaseRecordHostReadiness.checks.map((check) => (
+                    <li key={check.key}>
+                      <strong>{`${check.label}: ${check.summary}`}</strong>
+                      {check.detail ? ` (${check.detail})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+              <article className="metric-card">
+                <p className="eyebrow">Provider-backed next steps</p>
+                <ul className="response-list">
+                  {releaseRecordHostReadiness.providerSandbox.nextSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ul>
+              </article>
             </div>
           ) : null}
           {releaseRecordRuntimeParity ? (

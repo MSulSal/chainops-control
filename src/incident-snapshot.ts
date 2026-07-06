@@ -16,6 +16,7 @@ import {
   getProviderSummary,
   getWorkspaceOperationalGuide
 } from "./reviewer-view.ts";
+import type { HostReadinessSnapshot } from "./host-readiness.ts";
 import type { RuntimeParityCiEvidence, RuntimeParityResult } from "./runtime-parity.ts";
 
 const require = createRequire(import.meta.url);
@@ -182,11 +183,17 @@ export type ReleaseRecordSnapshot = {
       workspaceExportPath: string;
       telemetryExportPath: string;
       openTelemetryExportPath: string;
+      hostReadinessPath: string;
       releaseRecordPath: string;
     };
     seededScenario: {
       name: string;
       expectedTraceIds: string[];
+    };
+    hostReadiness: {
+      artifactPath: string;
+      failureMode: string;
+      lastResult: HostReadinessSnapshot | null;
     };
     runtimeParity: {
       comparedExports: string[];
@@ -365,6 +372,7 @@ export function buildReleaseRecordSnapshot(input: {
   summary: CaseQueueSummary;
   analytics: CaseQueueAnalytics;
   cases: CaseSummary[];
+  lastHostReadinessSnapshot?: HostReadinessSnapshot | null;
   lastRuntimeParityResult?: RuntimeParityResult | null;
 }): ReleaseRecordSnapshot {
   const releaseGuide = getWorkspaceOperationalGuide(input.summary, input.analytics);
@@ -418,6 +426,7 @@ export function buildReleaseRecordSnapshot(input: {
         workspaceExportPath: "/exports/workspace",
         telemetryExportPath: "/exports/telemetry",
         openTelemetryExportPath: "/exports/telemetry/opentelemetry",
+        hostReadinessPath: "/exports/host-readiness",
         releaseRecordPath: "/exports/releases/latest"
       },
       seededScenario: {
@@ -427,6 +436,12 @@ export function buildReleaseRecordSnapshot(input: {
           "trace-demo-pending-high",
           "trace-demo-approved-low"
         ]
+      },
+      hostReadiness: {
+        artifactPath: "/exports/host-readiness",
+        failureMode:
+          "Treat the first provider-backed sandbox attempt as blocked until the latest host-readiness artifact reports Docker, Compose, Terraform, and live-provider prerequisites as ready on the current host.",
+        lastResult: input.lastHostReadinessSnapshot ?? null
       },
       runtimeParity: {
         comparedExports: [

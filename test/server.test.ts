@@ -752,7 +752,11 @@ test("exports a latest release record artifact from the current filtered queue",
   assert.equal(snapshot.release.version, "0.1.0");
   assert.equal(snapshot.release.channel, "local_container_runtime");
   assert.equal(snapshot.verification.endpoints.releaseRecordPath, "/exports/releases/latest");
+  assert.equal(snapshot.verification.endpoints.hostReadinessPath, "/exports/host-readiness");
   assert.equal(snapshot.verification.endpoints.openTelemetryExportPath, "/exports/telemetry/opentelemetry");
+  assert.equal(snapshot.verification.hostReadiness.artifactPath, "/exports/host-readiness");
+  assert.equal(snapshot.verification.hostReadiness.lastResult?.overall.statusLabel, "Blocked");
+  assert.match(snapshot.verification.hostReadiness.failureMode, /provider-backed sandbox attempt as blocked/i);
   assert.deepEqual(snapshot.verification.runtimeParity.comparedExports, [
     "/exports/telemetry",
     "/exports/telemetry/opentelemetry",

@@ -83,10 +83,18 @@ export function createApp(
 
       if (request.method === "GET" && url.pathname === "/exports/releases/latest") {
         const cases = await store.listCases(readCaseListFilters(url.searchParams));
+        const lastHostReadinessSnapshot = options.loadHostReadinessSnapshot
+          ? await options.loadHostReadinessSnapshot()
+          : await collectHostReadinessSnapshot();
         const lastRuntimeParityResult = await readLatestRuntimeParityResult();
-        return sendJson(response, 200, buildReleaseRecordSnapshot({ ...cases, lastRuntimeParityResult }), {
-          "content-disposition": 'attachment; filename="latest-release-record.json"'
-        });
+        return sendJson(
+          response,
+          200,
+          buildReleaseRecordSnapshot({ ...cases, lastHostReadinessSnapshot, lastRuntimeParityResult }),
+          {
+            "content-disposition": 'attachment; filename="latest-release-record.json"'
+          }
+        );
       }
 
       if (request.method === "GET" && url.pathname === "/exports/runtime-parity/latest") {

@@ -415,11 +415,17 @@ test("marks the current case as the release-record focus when paths match", () =
           workspaceExportPath: "/exports/workspace",
           telemetryExportPath: "/exports/telemetry",
           openTelemetryExportPath: "/exports/telemetry/opentelemetry",
+          hostReadinessPath: "/exports/host-readiness",
           releaseRecordPath: "/exports/releases/latest"
         },
         seededScenario: {
           name: "incident_review_v1",
           expectedTraceIds: ["trace-demo-provider-timeout"]
+        },
+        hostReadiness: {
+          artifactPath: "/exports/host-readiness",
+          failureMode: "Treat the first provider-backed sandbox attempt as blocked.",
+          lastResult: null
         },
         runtimeParity: {
           comparedExports: ["/exports/releases/latest"],
@@ -555,11 +561,17 @@ test("points case detail users back to the release focus case when another case 
           workspaceExportPath: "/exports/workspace",
           telemetryExportPath: "/exports/telemetry",
           openTelemetryExportPath: "/exports/telemetry/opentelemetry",
+          hostReadinessPath: "/exports/host-readiness",
           releaseRecordPath: "/exports/releases/latest"
         },
         seededScenario: {
           name: "incident_review_v1",
           expectedTraceIds: ["trace-demo-approved-low"]
+        },
+        hostReadiness: {
+          artifactPath: "/exports/host-readiness",
+          failureMode: "Treat the first provider-backed sandbox attempt as blocked.",
+          lastResult: null
         },
         runtimeParity: {
           comparedExports: ["/exports/releases/latest"],

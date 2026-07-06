@@ -80,6 +80,7 @@ Expected result:
 - The record lists the release-check commands `npm test`, `npm run smoke:demo`, `npm run smoke:runtime`, and `npm run build:web`.
 - The artifact points back to `/exports/telemetry`, `/exports/workspace`, and a focus case export so rollback drills stay attached to the same runtime evidence instead of a separate manual note.
 - The record now also embeds the most recent persisted runtime-parity result when one exists, including the checked base URL, export-path statuses, latest failure summary, and any matching GitHub Actions review-artifact metadata.
+- The record also embeds the latest host-readiness snapshot and `/exports/host-readiness` path so provider-backed sandbox blockers are reviewed from the same release artifact instead of a separate checklist.
 
 Latest runtime-parity artifact:
 
@@ -182,11 +183,12 @@ Expected result:
 16. Use `Export OpenTelemetry seam` from the workspace and confirm the JSON includes deterministic hex trace/span IDs, local spans for each recorded workflow stage, aggregate metrics, and explicit no-collector boundaries.
 17. Use `Export latest release record` from the workspace and confirm the JSON includes the current version, the required verification commands, and rollback evidence tied to a visible trace or case export.
 18. Confirm the release record section shows the last runtime parity result, including pass/fail status, checked base URL, per-export evidence, and the GitHub Actions artifact/run hint when the latest parity result came from CI.
-19. Confirm the release record section also previews the required commands, focus-case links, rollback triggers, and boundaries from the same exported artifact instead of only download links.
+19. Confirm the release record section also previews the required commands, focus-case links, rollback triggers, host-readiness blockers, and boundaries from the same exported artifact instead of only download links.
 20. Use `Export latest runtime parity` when available and confirm the JSON matches the pass/fail summary shown in the release record section.
 21. Open the focus case from the release record, confirm the case-detail page shows whether the current case is the release anchor, and verify the rollback drill evidence matches the exported release record.
 22. From the case-detail release-evidence panel, confirm `Export latest release record`, `Export telemetry handoff`, and the focus-case snapshot links all resolve without leaving the API-backed evidence path.
 23. Use `Export host-readiness artifact` from the workspace and confirm the JSON reports the current Docker, Compose, Terraform, and live-provider prerequisite state instead of pretending the host is ready for a provider-backed sandbox.
+24. Open a case detail and confirm the release-evidence panel now includes the release-linked host-readiness summary plus a direct `Export host-readiness artifact` link.
 
 ## Human approval
 
