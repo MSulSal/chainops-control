@@ -8,6 +8,7 @@ import {
   getLatestReleaseRecordUrl,
   getOpenTelemetryExportUrl,
   getTelemetryHandoffUrl,
+  replayFailedCase,
   submitCaseDecision
 } from "../../../src/reviewer-data";
 import {
@@ -19,7 +20,7 @@ import {
   getProviderSummary,
   getStatusCopy
 } from "../../../src/reviewer-view.ts";
-import { ReviewSubmitButton } from "./review-submit";
+import { CaseActionSubmitButton, ReviewSubmitButton } from "./review-submit";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,21 @@ export default async function CaseDetailPage({
     }
   }
 
+  async function replayCase() {
+    "use server";
+
+    try {
+      const replayed = await replayFailedCase(id);
+
+      revalidatePath("/");
+      revalidatePath(`/cases/${id}`);
+      redirect(`/cases/${id}?flash=${replayed.recovered ? "recovered" : "replay_failed"}`);
+    } catch (replayError) {
+      const message = encodeURIComponent((replayError as Error).message);
+      redirect(`/cases/${id}?error=${message}`);
+    }
+  }
+
   return (
     <main className="shell">
       <Link href="/" className="back-link">
@@ -100,6 +116,16 @@ export default async function CaseDetailPage({
           ) : null}
           {flash === "rejected" ? (
             <div className="callout callout-danger">Reviewer decision saved. The case is now rejected.</div>
+          ) : null}
+          {flash === "recovered" ? (
+            <div className="callout callout-success">
+              Replay recovered the original failed case with the stored idempotency key. Review the refreshed evidence and record the human decision.
+            </div>
+          ) : null}
+          {flash === "replay_failed" ? (
+            <div className="callout callout-danger">
+              Replay reused the original idempotency key, but the provider failed again. Compare the refreshed trace and runtime state before trying again.
+            </div>
           ) : null}
           {error ? <div className="callout callout-danger">{error}</div> : null}
           {callout ? <div className="callout callout-danger">{callout}</div> : null}
@@ -184,6 +210,29 @@ export default async function CaseDetailPage({
               <div className="filter-actions">
                 <ReviewSubmitButton decision="approve" />
                 <ReviewSubmitButton decision="reject" />
+              </div>
+            </form>
+          </div>
+        </section>
+      ) : null}
+
+      {detail.caseRecord.status === "ingestion_failed" ? (
+        <section className="panel" style={{ marginTop: 24 }}>
+          <div className="panel-stack">
+            <div>
+              <p className="eyebrow">Replay action</p>
+              <h2>Retry the failed intake path safely</h2>
+              <p className="muted">
+                This action reuses the original idempotency key through the same intake boundary, updates the original case instead of duplicating state, and records replay outcome evidence in the audit log.
+              </p>
+            </div>
+            <form action={replayCase}>
+              <div className="filter-actions">
+                <CaseActionSubmitButton
+                  label="Replay failed ingestion"
+                  pendingLabel="Replaying failed ingestion..."
+                  className="button-primary"
+                />
               </div>
             </form>
           </div>

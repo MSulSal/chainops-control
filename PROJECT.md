@@ -43,6 +43,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 25: threaded that host-readiness artifact into the latest release record and both release-evidence views so runtime parity and provider-backed sandbox blockers now stay attached to one bounded export path.
 - Slice 26: extended the GitHub Actions runtime-parity evidence bundle to capture the live host-readiness artifact too, so remote reviewers can download parity status, release-record evidence, and current provider-backed sandbox blockers from one CI package.
 - Slice 27: persisted whether that matching GitHub Actions bundle actually captured host-readiness successfully, then surfaced that status plus the expected bundle files directly in the release record and reviewer workspace.
+- Slice 28: added a reviewer-triggered failed-ingestion replay action on case detail that reuses the original idempotency key, updates the original case instead of duplicating state, and persists replay request plus recovery-vs-repeat audit evidence.
 
 ## Success evidence
 

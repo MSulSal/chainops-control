@@ -29,6 +29,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 26: the cleanest way to keep remote release review honest was to capture the same host-readiness artifact in the CI bundle instead of forcing reviewers to infer host blockers from parity failures or fetch a second export outside the artifact package.
 - Applied in slice 27: the cleanest way to make CI blocker capture status visible was to enrich the existing persisted parity artifact with host-readiness capture metadata instead of adding a second review-status endpoint or artifact index.
 - Applied in slice 27: rendering the expected bundle files and host-readiness capture result from the same release-record contract keeps the reviewer workspace aligned with the downloaded CI artifact and makes release-review gaps easier to explain.
+- Applied in slice 28: the cleanest way to add failed-ingestion replay without inventing a second recovery workflow was to trigger the same intake/provider boundary from case detail, then persist replay request plus outcome evidence in the existing audit log.
+- Applied in slice 28: case-detail callouts become more useful when they distinguish "recovered on replay" from "failed again on replay," because the reviewer can explain both retry safety and current operational state from one page refresh.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -47,6 +49,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 18: runtime parity checks stay reviewable when they normalize only the explicitly documented time-relative fields instead of hiding broad snapshot differences.
 - Applied in slice 19: release evidence stays explainable when the smoke script writes a structured artifact with checked export paths, ignored fields, and the exact failure summary instead of leaving parity results trapped in console output.
 - Applied in slice 20: CI evidence stays reviewable when the workflow uploads the raw parity artifact, a capture summary, and any reachable release record as one bundle before the compose stack is torn down.
+- Applied in slice 28: replay-safe recovery is easier to defend when the service, not the browser, owns the stored idempotency key and writes explicit replay-request plus replay-outcome audit events around the same provider fetch boundary.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL

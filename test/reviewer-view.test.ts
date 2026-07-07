@@ -103,6 +103,49 @@ test("surfaces retry-safe failed-ingestion guidance in the detail view", () => {
   assert.match(callout, /same idempotency key/);
 });
 
+test("surfaces replay recovery evidence on a recovered case detail view", () => {
+  const callout = getCaseDetailCallout(
+    {
+      id: "case-recovered-1",
+      walletAddress: "0x1111111111111111111111111111111111111111",
+      status: "pending_review",
+      risk: {
+        level: "medium",
+        score: 30,
+        indicators: ["sampled transfer volume is at or above 25 ETH"]
+      },
+      transactions: [],
+      sourceMetadata: {
+        provider: "etherscan-account-txlist",
+        mode: "live",
+        network: "ethereum-mainnet",
+        fetchedAt: "2026-07-07T18:05:00.000Z",
+        attemptCount: 2,
+        timeoutMs: 1500,
+        transactionCount: 3
+      },
+      traceId: "trace-recovered-1",
+      createdAt: "2026-07-07T18:00:00.000Z"
+    },
+    [
+      {
+        id: "audit-replay-recovered-1",
+        caseId: "case-recovered-1",
+        type: "FAILED_CASE_REPLAY_RECOVERED",
+        traceId: "trace-recovered-1",
+        at: "2026-07-07T18:05:00.000Z",
+        details: {
+          replayAttempt: 1
+        }
+      }
+    ]
+  );
+
+  assert.ok(callout);
+  assert.match(callout, /replay attempt 1/i);
+  assert.match(callout, /recovered this case/i);
+});
+
 test("builds summary cards and active filter chips for the reviewer workspace", () => {
   const cards = getQueueSummaryCards({
     total: 9,
@@ -365,6 +408,63 @@ test("builds retry-safe incident guidance for a failed case", () => {
   assert.equal(guide.tone, "danger");
   assert.match(guide.actions[1], /same Idempotency-Key/);
   assert.match(guide.evidence[1], /timeout/);
+});
+
+test("records repeated replay failure evidence in the incident guide", () => {
+  const guide = getCaseOperationalGuide(
+    {
+      id: "case-4b",
+      walletAddress: "0x1111111111111111111111111111111111111111",
+      status: "ingestion_failed",
+      risk: {
+        level: "low",
+        score: 0,
+        indicators: ["transaction sample unavailable until provider retry succeeds"]
+      },
+      transactions: [],
+      sourceMetadata: {
+        provider: "etherscan-account-txlist",
+        mode: "live",
+        network: "ethereum-mainnet",
+        fetchedAt: "2026-07-07T19:00:00.000Z",
+        attemptCount: 2,
+        timeoutMs: 1500,
+        transactionCount: 0,
+        errorCode: "timeout",
+        retriable: true
+      },
+      traceId: "trace-failed-2",
+      createdAt: "2026-07-07T19:00:00.000Z"
+    },
+    [
+      {
+        id: "audit-1",
+        caseId: "case-4b",
+        type: "PROVIDER_FETCH_FAILED",
+        traceId: "trace-failed-2",
+        at: "2026-07-07T19:00:00.000Z",
+        details: {
+          provider: "etherscan-account-txlist",
+          errorCode: "timeout",
+          durationMs: 1550,
+          intakeDurationMs: 1630
+        }
+      },
+      {
+        id: "audit-2",
+        caseId: "case-4b",
+        type: "FAILED_CASE_REPLAY_FAILED",
+        traceId: "trace-failed-2",
+        at: "2026-07-07T19:05:00.000Z",
+        details: {
+          replayAttempt: 2
+        }
+      }
+    ]
+  );
+
+  assert.match(guide.evidence.at(-1) ?? "", /replay attempt 2/i);
+  assert.match(guide.evidence.at(-1) ?? "", /repeated the failure/i);
 });
 
 test("marks the current case as the release-record focus when paths match", () => {

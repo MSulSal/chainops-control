@@ -146,6 +146,18 @@ export type AuditStore = {
     note?: string;
     requestStartedAtMs?: number;
   }): Promise<{ caseRecord: CaseRecord; auditEvent: AuditEvent }>;
+  replayFailedCase(input: {
+    caseId: string;
+    traceId: string;
+    now: string;
+    requestStartedAtMs?: number;
+    requestedFrom?: string;
+  }): Promise<{
+    caseRecord: CaseRecord;
+    auditEvents: AuditEvent[];
+    recovered: boolean;
+    replayAttempt: number;
+  }>;
   findCase(caseId: string): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[] } | null>;
 };
 
@@ -429,6 +441,120 @@ export class PostgresAuditStore implements AuditStore {
     }
   }
 
+  async replayFailedCase(input: {
+    caseId: string;
+    traceId: string;
+    now: string;
+    requestStartedAtMs?: number;
+    requestedFrom?: string;
+  }): Promise<{
+    caseRecord: CaseRecord;
+    auditEvents: AuditEvent[];
+    recovered: boolean;
+    replayAttempt: number;
+  }> {
+    await this.initPromise;
+    const replayTarget = await this.findReplayTarget(input.caseId);
+    const requestStartedAtMs = input.requestStartedAtMs ?? performance.now();
+    const requestedFrom = input.requestedFrom ?? "reviewer_case_detail";
+    const replayRequestedAt = input.now;
+    const replayRequestEvent = buildAuditEvent(
+      replayTarget.caseRecord.id,
+      "FAILED_CASE_REPLAY_REQUESTED",
+      input.traceId,
+      replayRequestedAt,
+      {
+        requestedFrom,
+        replayAttempt: replayTarget.replayAttempt,
+        idempotencyKeyReused: true,
+        previousTraceId: replayTarget.caseRecord.traceId,
+        previousFailureCode: replayTarget.caseRecord.sourceMetadata?.errorCode ?? "unknown"
+      }
+    );
+
+    const providerStartedAtMs = performance.now();
+
+    try {
+      const providerResult = await this.provider.fetchTransactionSample({
+        walletAddress: replayTarget.caseRecord.walletAddress,
+        traceId: input.traceId
+      });
+      const completedAt = new Date().toISOString();
+      const outcomeAt = new Date(Date.parse(completedAt) + 1).toISOString();
+      const providerFetchDurationMs = roundDurationMs(performance.now() - providerStartedAtMs);
+      const intakeDurationMs = roundDurationMs(performance.now() - requestStartedAtMs);
+      const recoveredCase = createCaseRecord({
+        caseId: replayTarget.caseRecord.id,
+        createdAt: replayTarget.caseRecord.createdAt,
+        walletAddress: replayTarget.caseRecord.walletAddress,
+        transactions: providerResult.transactions,
+        sourceMetadata: providerResult.sourceMetadata,
+        traceId: input.traceId,
+        now: completedAt,
+        providerFetchDurationMs,
+        intakeDurationMs
+      });
+      const replayRecoveredEvent = buildAuditEvent(
+        replayTarget.caseRecord.id,
+        "FAILED_CASE_REPLAY_RECOVERED",
+        input.traceId,
+        outcomeAt,
+        {
+          requestedFrom,
+          replayAttempt: replayTarget.replayAttempt,
+          idempotencyKeyReused: true,
+          previousFailureCode: replayTarget.caseRecord.sourceMetadata?.errorCode ?? "unknown",
+          provider: providerResult.sourceMetadata.provider,
+          mode: providerResult.sourceMetadata.mode
+        }
+      );
+      const found = await this.recoverFailedCase(recoveredCase, [replayRequestEvent, replayRecoveredEvent]);
+
+      return {
+        ...found,
+        recovered: true,
+        replayAttempt: replayTarget.replayAttempt
+      };
+    } catch (error) {
+      const completedAt = new Date().toISOString();
+      const outcomeAt = new Date(Date.parse(completedAt) + 1).toISOString();
+      const providerFetchDurationMs = roundDurationMs(performance.now() - providerStartedAtMs);
+      const intakeDurationMs = roundDurationMs(performance.now() - requestStartedAtMs);
+      const providerError = normalizeProviderFetchError(error);
+      const sourceMetadata = buildFailureSourceMetadata(providerError, completedAt);
+      const failedCase = createFailedCaseRecord({
+        caseId: replayTarget.caseRecord.id,
+        createdAt: replayTarget.caseRecord.createdAt,
+        walletAddress: replayTarget.caseRecord.walletAddress,
+        sourceMetadata,
+        traceId: input.traceId,
+        now: completedAt,
+        providerFetchDurationMs,
+        intakeDurationMs
+      });
+      const replayFailedEvent = buildAuditEvent(
+        replayTarget.caseRecord.id,
+        "FAILED_CASE_REPLAY_FAILED",
+        input.traceId,
+        outcomeAt,
+        {
+          requestedFrom,
+          replayAttempt: replayTarget.replayAttempt,
+          idempotencyKeyReused: true,
+          previousFailureCode: replayTarget.caseRecord.sourceMetadata?.errorCode ?? "unknown",
+          errorCode: sourceMetadata.errorCode ?? "unknown"
+        }
+      );
+      const found = await this.recordFailedRetry(failedCase, [replayRequestEvent, replayFailedEvent]);
+
+      return {
+        ...found,
+        recovered: false,
+        replayAttempt: replayTarget.replayAttempt
+      };
+    }
+  }
+
   async findCase(caseId: string): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[] } | null> {
     await this.initPromise;
     const client = await this.pool.connect();
@@ -554,6 +680,54 @@ export class PostgresAuditStore implements AuditStore {
     }
   }
 
+  private async findReplayTarget(caseId: string): Promise<{
+    caseRecord: CaseRecord;
+    replayAttempt: number;
+  }> {
+    const client = await this.pool.connect();
+
+    try {
+      const caseResult = await client.query<CaseRow>(
+        `SELECT * FROM ${this.schema}.cases WHERE id = $1`,
+        [caseId]
+      );
+
+      if (!caseResult.rowCount) {
+        throw new Error("case not found");
+      }
+
+      const caseRow = caseResult.rows[0];
+      if (caseRow.status !== "ingestion_failed") {
+        throw new Error("case is not eligible for replay");
+      }
+
+      if (!caseRow.idempotency_key) {
+        throw new Error("case cannot be replayed because the original idempotency key was not stored");
+      }
+
+      const transactionResult = await client.query<TransactionRow>(
+        `SELECT tx_hash, direction, amount_eth, confirmations, counterparty, position
+         FROM ${this.schema}.transactions
+         WHERE case_id = $1
+         ORDER BY position ASC`,
+        [caseId]
+      );
+      const replayAttemptResult = await client.query<{ count: string }>(
+        `SELECT COUNT(*) AS count
+         FROM ${this.schema}.audit_events
+         WHERE case_id = $1 AND event_type = 'FAILED_CASE_REPLAY_REQUESTED'`,
+        [caseId]
+      );
+
+      return {
+        caseRecord: mapCaseRow(caseRow, transactionResult.rows),
+        replayAttempt: Number(replayAttemptResult.rows[0].count) + 1
+      };
+    } finally {
+      client.release();
+    }
+  }
+
   private async loadCaseQueueAnalytics(
     client: PoolClient,
     filters: CaseListFilters
@@ -648,7 +822,8 @@ export class PostgresAuditStore implements AuditStore {
   }
 
   private async recoverFailedCase(
-    created: StoredCaseBundle
+    created: StoredCaseBundle,
+    replayAuditEvents: AuditEvent[] = []
   ): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean; recovered: boolean }> {
     const client = await this.pool.connect();
 
@@ -656,7 +831,7 @@ export class PostgresAuditStore implements AuditStore {
       await client.query("BEGIN");
       await this.updateCaseRow(client, created.caseRecord);
       await this.replaceTransactions(client, created.caseRecord.id, created.caseRecord.transactions);
-      await this.insertAuditEvents(client, created.auditEvents.slice(2));
+      await this.insertAuditEvents(client, [...replayAuditEvents.slice(0, 1), ...created.auditEvents.slice(2), ...replayAuditEvents.slice(1)]);
       const found = await this.findCaseWithClient(client, created.caseRecord.id);
       await client.query("COMMIT");
 
@@ -674,14 +849,15 @@ export class PostgresAuditStore implements AuditStore {
   }
 
   private async recordFailedRetry(
-    created: StoredCaseBundle
+    created: StoredCaseBundle,
+    replayAuditEvents: AuditEvent[] = []
   ): Promise<{ caseRecord: CaseRecord; auditEvents: AuditEvent[]; replayed: boolean; recovered: boolean }> {
     const client = await this.pool.connect();
 
     try {
       await client.query("BEGIN");
       await this.updateCaseRow(client, created.caseRecord);
-      await this.insertAuditEvents(client, created.auditEvents.slice(2));
+      await this.insertAuditEvents(client, [...replayAuditEvents.slice(0, 1), ...created.auditEvents.slice(2), ...replayAuditEvents.slice(1)]);
       const found = await this.findCaseWithClient(client, created.caseRecord.id);
       await client.query("COMMIT");
 

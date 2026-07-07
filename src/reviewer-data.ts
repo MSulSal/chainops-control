@@ -37,6 +37,11 @@ export type CaseDecisionInput = {
   note: string;
 };
 
+export type CaseReplayResponse = CaseDetailResponse & {
+  recovered: boolean;
+  replayAttempt: number;
+};
+
 export type DemoResetResponse = {
   scenario: DemoScenarioName;
   title: string;
@@ -105,6 +110,35 @@ export async function submitCaseDecision(
     }
 
     return detail;
+  });
+}
+
+export async function replayFailedCase(caseId: string): Promise<CaseReplayResponse> {
+  const response = await fetch(`${getApiBaseUrl()}/cases/${caseId}/replay`, {
+    method: "POST",
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error || `failed to replay case ${caseId}: ${response.status}`);
+  }
+
+  const replayed = (await response.json()) as {
+    caseRecord: CaseRecord;
+    recovered: boolean;
+    replayAttempt: number;
+  };
+  return fetchCaseDetail(replayed.caseRecord.id).then((detail) => {
+    if (!detail) {
+      throw new Error(`failed to reload case ${caseId} after replay`);
+    }
+
+    return {
+      ...detail,
+      recovered: replayed.recovered,
+      replayAttempt: replayed.replayAttempt
+    };
   });
 }
 

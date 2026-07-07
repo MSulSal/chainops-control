@@ -186,6 +186,27 @@ export function createApp(
         return sendJson(response, 200, approved);
       }
 
+      const replayMatch = url.pathname.match(/^\/cases\/([^/]+)\/replay$/);
+      if (request.method === "POST" && replayMatch) {
+        const replayed = await store.replayFailedCase({
+          caseId: replayMatch[1],
+          traceId,
+          now: new Date().toISOString(),
+          requestStartedAtMs,
+          requestedFrom: "reviewer_case_detail"
+        });
+
+        writeStructuredLog("case.replayed", {
+          traceId,
+          caseId: replayed.caseRecord.id,
+          status: replayed.caseRecord.status,
+          recovered: replayed.recovered,
+          replayAttempt: replayed.replayAttempt
+        });
+
+        return sendJson(response, 200, replayed);
+      }
+
       return sendJson(response, 404, { error: "route not found", traceId });
     } catch (error) {
       writeStructuredLog("request.failed", {

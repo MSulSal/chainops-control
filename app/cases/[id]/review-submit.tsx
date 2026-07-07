@@ -22,3 +22,23 @@ export function ReviewSubmitButton({ decision }: ReviewSubmitProps) {
     </button>
   );
 }
+
+type CaseActionSubmitButtonProps = {
+  label: string;
+  pendingLabel: string;
+  className: string;
+};
+
+export function CaseActionSubmitButton({
+  label,
+  pendingLabel,
+  className
+}: CaseActionSubmitButtonProps) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button type="submit" disabled={pending} className={className}>
+      {pending ? pendingLabel : label}
+    </button>
+  );
+}

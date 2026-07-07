@@ -100,3 +100,7 @@ The next evidence step captures the live host-readiness export into the same Git
 ## CI host-readiness status tradeoff
 
 The next reviewability step stores host-readiness capture status on the same persisted parity artifact instead of inferring success from filenames or introducing a separate CI-status endpoint. That keeps the release record and reviewer workspace aligned on one evidence contract and makes it explicit whether the latest CI bundle actually carried the blocker snapshot. The tradeoff is that reviewers still need to download the artifact for raw JSON details, but they no longer have to guess whether host-readiness capture succeeded at all.
+
+## Failed-ingestion replay tradeoff
+
+The next recovery step reuses the original intake/provider boundary from the case-detail page instead of inventing a second repair API with its own payload or persistence rules. The service owns the stored idempotency key, updates the original failed case in place, and writes explicit replay-request plus recovery-vs-repeat audit events so the retry path stays explainable from the same SQL-backed history. The tradeoff is that replay remains intentionally bounded to cases that already captured an idempotency key; the product still does not claim autonomous repair loops or background retries.

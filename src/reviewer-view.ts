@@ -120,6 +120,12 @@ export function getCaseListSubtitle(caseItem: CaseSummary): string {
 }
 
 export function getCaseDetailCallout(caseRecord: CaseRecord, auditEvents: AuditEvent[]): string | null {
+  const replayStatus = getLatestReplayStatus(auditEvents);
+
+  if (caseRecord.status === "pending_review" && replayStatus?.event.type === "FAILED_CASE_REPLAY_RECOVERED") {
+    return `Replay attempt ${replayStatus.attemptNumber} reused the original idempotency key and recovered this case. Review the refreshed evidence before recording the human decision.`;
+  }
+
   if (caseRecord.status !== "ingestion_failed") {
     return null;
   }
@@ -127,6 +133,11 @@ export function getCaseDetailCallout(caseRecord: CaseRecord, auditEvents: AuditE
   const failedEvent = [...auditEvents].reverse().find((event) => event.type === "PROVIDER_FETCH_FAILED");
   const errorCode =
     typeof failedEvent?.details.errorCode === "string" ? failedEvent.details.errorCode : "unknown";
+
+  if (replayStatus?.event.type === "FAILED_CASE_REPLAY_FAILED") {
+    return `Replay attempt ${replayStatus.attemptNumber} reused the original idempotency key, but the latest provider fetch still ended in ${errorCode}. Compare the new trace and runtime state before replaying again.`;
+  }
+
   return `The latest provider fetch ended in ${errorCode}. Retry the intake with the same idempotency key so the original case can recover instead of duplicating state.`;
 }
 
@@ -445,6 +456,12 @@ export function getCaseOperationalGuide(caseRecord: CaseRecord, auditEvents: Aud
   if (caseRecord.status === "ingestion_failed") {
     const errorCode =
       typeof providerFailed?.details.errorCode === "string" ? providerFailed.details.errorCode : "unknown";
+    const replayStatus = getLatestReplayStatus(auditEvents);
+    const replayEvidence = replayStatus
+      ? replayStatus.event.type === "FAILED_CASE_REPLAY_FAILED"
+        ? `Replay attempt ${replayStatus.attemptNumber} already repeated the failure through the same API path.`
+        : `Replay attempt ${replayStatus.attemptNumber} already recovered this case through the same API path.`
+      : "No reviewer-triggered replay attempt has been recorded yet.";
 
     return {
       title: "Retry-safe incident response required",
@@ -464,12 +481,19 @@ export function getCaseOperationalGuide(caseRecord: CaseRecord, auditEvents: Aud
       evidence: [
         `Provider status: ${getProviderSummary(caseRecord.sourceMetadata)}.`,
         `Provider failure code: ${errorCode}.`,
-        `Intake duration ${formatMetricDuration(intakeDuration)}; provider duration ${formatMetricDuration(providerDuration)}.`
+        `Intake duration ${formatMetricDuration(intakeDuration)}; provider duration ${formatMetricDuration(providerDuration)}.`,
+        replayEvidence
       ]
     };
   }
 
   if (caseRecord.status === "pending_review") {
+    const replayStatus = getLatestReplayStatus(auditEvents);
+    const replayEvidence =
+      replayStatus?.event.type === "FAILED_CASE_REPLAY_RECOVERED"
+        ? `Recovered on replay attempt ${replayStatus.attemptNumber} with the original idempotency key before this review step.`
+        : `Trace ID: ${caseRecord.traceId}.`;
+
     return {
       title: "Ready for human review completion",
       tone: caseRecord.risk.level === "high" ? "warning" : "neutral",
@@ -488,7 +512,7 @@ export function getCaseOperationalGuide(caseRecord: CaseRecord, auditEvents: Aud
       evidence: [
         `Risk level: ${caseRecord.risk.level} (${caseRecord.risk.score}).`,
         `Intake duration ${formatMetricDuration(intakeDuration)}; provider duration ${formatMetricDuration(providerDuration)}.`,
-        `Trace ID: ${caseRecord.traceId}.`
+        replayEvidence
       ]
     };
   }
@@ -645,6 +669,27 @@ function getProviderFailureDetail(event: AuditEvent): string {
 function getReviewerDecisionDetail(event: AuditEvent): string {
   const note = typeof event.details.note === "string" && event.details.note ? event.details.note : "Reviewer note recorded.";
   return note;
+}
+
+function getLatestReplayStatus(
+  auditEvents: AuditEvent[]
+): { event: AuditEvent; attemptNumber: number } | null {
+  const event = [...auditEvents]
+    .reverse()
+    .find(
+      (candidate) =>
+        candidate.type === "FAILED_CASE_REPLAY_RECOVERED" || candidate.type === "FAILED_CASE_REPLAY_FAILED"
+    );
+
+  if (!event) {
+    return null;
+  }
+
+  const replayAttempt = event.details.replayAttempt;
+  return {
+    event,
+    attemptNumber: typeof replayAttempt === "number" && Number.isFinite(replayAttempt) ? replayAttempt : 1
+  };
 }
 
 function getReleaseStatusTone(statusLabel: ReleaseRecordSnapshot["release"]["statusLabel"]): StatusTone {

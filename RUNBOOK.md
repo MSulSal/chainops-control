@@ -178,18 +178,19 @@ Expected result:
 10. Open the case detail page and confirm the provider summary, trace ID, transaction sample, stage-trace cards, and audit timeline render.
 11. Submit an approval or rejection from the case detail page with a note and confirm the page refreshes with the new status, persisted reviewer note, and reviewer-decision timing.
 12. If the provider times out, confirm the workspace shows `Ingestion failed`, the provider/intake timing remains visible, and retry-safe guidance references reusing the same idempotency key.
-13. Use `Export workspace snapshot` and confirm the browser downloads JSON with the active filters, queue summary, release guide, and visible-case evidence.
-14. Use `Export case snapshot` from a detail page and confirm the JSON includes the case record, stage trace, incident guide, and immutable audit events.
-15. Use `Export telemetry handoff` from the workspace and confirm the JSON includes the health/readiness paths, smoke commands, queue evidence, trace samples, and bounded collector notes.
-16. Use `Export OpenTelemetry seam` from the workspace and confirm the JSON includes deterministic hex trace/span IDs, local spans for each recorded workflow stage, aggregate metrics, and explicit no-collector boundaries.
-17. Use `Export latest release record` from the workspace and confirm the JSON includes the current version, the required verification commands, and rollback evidence tied to a visible trace or case export.
-18. Confirm the release record section shows the last runtime parity result, including pass/fail status, checked base URL, per-export evidence, and the GitHub Actions artifact/run hint when the latest parity result came from CI.
-19. Confirm the release record section also previews the required commands, focus-case links, rollback triggers, host-readiness blockers, CI host-readiness capture status, expected bundle files, and boundaries from the same exported artifact instead of only download links.
-20. Use `Export latest runtime parity` when available and confirm the JSON matches the pass/fail summary shown in the release record section.
-21. Open the focus case from the release record, confirm the case-detail page shows whether the current case is the release anchor, and verify the rollback drill evidence matches the exported release record.
-22. From the case-detail release-evidence panel, confirm `Export latest release record`, `Export telemetry handoff`, and the focus-case snapshot links all resolve without leaving the API-backed evidence path.
-23. Use `Export host-readiness artifact` from the workspace and confirm the JSON reports the current Docker, Compose, Terraform, and live-provider prerequisite state instead of pretending the host is ready for a provider-backed sandbox.
-24. Open a case detail and confirm the release-evidence panel now includes the release-linked host-readiness summary plus a direct `Export host-readiness artifact` link.
+13. Use `Replay failed ingestion` from a failed case detail page and confirm the original case either recovers into `Pending review` or records a repeated-failure audit event without creating a second case.
+14. Use `Export workspace snapshot` and confirm the browser downloads JSON with the active filters, queue summary, release guide, and visible-case evidence.
+15. Use `Export case snapshot` from a detail page and confirm the JSON includes the case record, stage trace, incident guide, and immutable audit events.
+16. Use `Export telemetry handoff` from the workspace and confirm the JSON includes the health/readiness paths, smoke commands, queue evidence, trace samples, and bounded collector notes.
+17. Use `Export OpenTelemetry seam` from the workspace and confirm the JSON includes deterministic hex trace/span IDs, local spans for each recorded workflow stage, aggregate metrics, and explicit no-collector boundaries.
+18. Use `Export latest release record` from the workspace and confirm the JSON includes the current version, the required verification commands, and rollback evidence tied to a visible trace or case export.
+19. Confirm the release record section shows the last runtime parity result, including pass/fail status, checked base URL, per-export evidence, and the GitHub Actions artifact/run hint when the latest parity result came from CI.
+20. Confirm the release record section also previews the required commands, focus-case links, rollback triggers, host-readiness blockers, CI host-readiness capture status, expected bundle files, and boundaries from the same exported artifact instead of only download links.
+21. Use `Export latest runtime parity` when available and confirm the JSON matches the pass/fail summary shown in the release record section.
+22. Open the focus case from the release record, confirm the case-detail page shows whether the current case is the release anchor, and verify the rollback drill evidence matches the exported release record.
+23. From the case-detail release-evidence panel, confirm `Export latest release record`, `Export telemetry handoff`, and the focus-case snapshot links all resolve without leaving the API-backed evidence path.
+24. Use `Export host-readiness artifact` from the workspace and confirm the JSON reports the current Docker, Compose, Terraform, and live-provider prerequisite state instead of pretending the host is ready for a provider-backed sandbox.
+25. Open a case detail and confirm the release-evidence panel now includes the release-linked host-readiness summary plus a direct `Export host-readiness artifact` link.
 
 ## Human approval
 
@@ -199,6 +200,14 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4317/cases/<case-id>/approv
 ```
 
 The service records `HUMAN_APPROVED` or `HUMAN_REJECTED`; no automated enforcement action exists.
+
+Replay a failed case safely:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4317/cases/<case-id>/replay
+```
+
+The service reuses the original `Idempotency-Key`, updates the original failed case instead of creating a duplicate row, and records replay request plus recovery-vs-repeat outcome evidence in `audit_events`.
 
 ## Failure paths
 

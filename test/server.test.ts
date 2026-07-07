@@ -319,6 +319,141 @@ test("recovers a failed idempotent case instead of creating a duplicate", async 
   assert.equal(readinessBody.store.auditEventCount, 6);
 });
 
+test("replays a failed case from the reviewer action path and records replay recovery evidence", async (t) => {
+  let callCount = 0;
+  const provider = new EtherscanTransactionProvider({
+    baseUrl: "https://example.test/api",
+    timeoutMs: 5,
+    maxAttempts: 1,
+    retryDelayMs: 0,
+    fetcher: async (_url, init) => {
+      callCount += 1;
+      if (callCount === 1) {
+        await new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          status: "1",
+          result: [
+            {
+              hash: "0xccccddddeeeeffff0000111122223333444455556666777788889999aaaabbbb",
+              from: "0x3333333333333333333333333333333333333333",
+              to: "0x1111111111111111111111111111111111111111",
+              value: "900000000000000000",
+              confirmations: "22"
+            }
+          ]
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        }
+      );
+    }
+  });
+  const store = await createTestStore(provider);
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const createResponse = await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "idempotency-key": "replay-wallet-1"
+    },
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+  const created = await createResponse.json();
+  assert.equal(created.caseRecord.status, "ingestion_failed");
+
+  const replayResponse = await fetch(`${baseUrl}/cases/${created.caseRecord.id}/replay`, {
+    method: "POST",
+    headers: {
+      "x-request-id": "trace-replay-1"
+    }
+  });
+
+  assert.equal(replayResponse.status, 200);
+  const replayed = await replayResponse.json();
+  assert.equal(replayed.recovered, true);
+  assert.equal(replayed.replayAttempt, 1);
+  assert.equal(replayed.caseRecord.status, "pending_review");
+  assert.equal(replayed.caseRecord.id, created.caseRecord.id);
+
+  const readResponse = await fetch(`${baseUrl}/cases/${created.caseRecord.id}`);
+  const found = await readResponse.json();
+  assert.equal(found.auditEvents.some((event) => event.type === "FAILED_CASE_REPLAY_REQUESTED"), true);
+  assert.equal(found.auditEvents.some((event) => event.type === "FAILED_CASE_REPLAY_RECOVERED"), true);
+  assert.equal(found.auditEvents.at(-1)?.type, "FAILED_CASE_REPLAY_RECOVERED");
+});
+
+test("records repeated replay failure evidence when the provider still fails", async (t) => {
+  const provider = new EtherscanTransactionProvider({
+    baseUrl: "https://example.test/api",
+    timeoutMs: 5,
+    maxAttempts: 1,
+    retryDelayMs: 0,
+    fetcher: async (_url, init) =>
+      await new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      })
+  });
+  const store = await createTestStore(provider);
+  const app = createApp(store);
+
+  await new Promise<void>((resolve) => app.listen(0, resolve));
+  t.after(async () => {
+    await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
+    await store.close();
+  });
+
+  const address = app.address();
+  assert.equal(typeof address, "object");
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const createResponse = await fetch(`${baseUrl}/cases`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "idempotency-key": "replay-wallet-2"
+    },
+    body: JSON.stringify({ walletAddress: "0x1111111111111111111111111111111111111111" })
+  });
+  const created = await createResponse.json();
+  assert.equal(created.caseRecord.status, "ingestion_failed");
+
+  const replayResponse = await fetch(`${baseUrl}/cases/${created.caseRecord.id}/replay`, {
+    method: "POST",
+    headers: {
+      "x-request-id": "trace-replay-2"
+    }
+  });
+
+  assert.equal(replayResponse.status, 200);
+  const replayed = await replayResponse.json();
+  assert.equal(replayed.recovered, false);
+  assert.equal(replayed.replayAttempt, 1);
+  assert.equal(replayed.caseRecord.status, "ingestion_failed");
+
+  const readResponse = await fetch(`${baseUrl}/cases/${created.caseRecord.id}`);
+  const found = await readResponse.json();
+  assert.equal(found.auditEvents.some((event) => event.type === "FAILED_CASE_REPLAY_REQUESTED"), true);
+  assert.equal(found.auditEvents.some((event) => event.type === "FAILED_CASE_REPLAY_FAILED"), true);
+  assert.equal(found.auditEvents.at(-1)?.type, "FAILED_CASE_REPLAY_FAILED");
+});
+
 test("lists recent cases with failed-ingestion visibility, queue summaries, and filters", async (t) => {
   let callCount = 0;
   const provider = new EtherscanTransactionProvider({
