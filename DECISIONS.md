@@ -96,3 +96,7 @@ The next reviewability step embeds that existing host-readiness artifact inside 
 ## CI host-readiness bundle tradeoff
 
 The next evidence step captures the live host-readiness export into the same GitHub Actions artifact that already stores runtime parity and release-record evidence instead of asking remote reviewers to fetch a second export or infer host blockers from parity status alone. That keeps release review download-only and consistent with the existing artifact path, while preserving the honest boundary: the host snapshot is still just a point-in-time prerequisite report from the checked machine, not proof that a provider-backed sandbox was exercised successfully.
+
+## CI host-readiness status tradeoff
+
+The next reviewability step stores host-readiness capture status on the same persisted parity artifact instead of inferring success from filenames or introducing a separate CI-status endpoint. That keeps the release record and reviewer workspace aligned on one evidence contract and makes it explicit whether the latest CI bundle actually carried the blocker snapshot. The tradeoff is that reviewers still need to download the artifact for raw JSON details, but they no longer have to guess whether host-readiness capture succeeded at all.

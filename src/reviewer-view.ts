@@ -10,6 +10,7 @@ import type {
   SourceMetadata
 } from "./domain.ts";
 import type { ReleaseRecordSnapshot } from "./incident-snapshot.ts";
+import type { RuntimeParityCiEvidence } from "./runtime-parity.ts";
 
 type StatusTone = "neutral" | "warning" | "danger" | "success";
 
@@ -557,6 +558,32 @@ export function getCaseReleaseRecordSummary(
     focusCasePath,
     focusCaseExportPath
   };
+}
+
+export function getReviewArtifactCaptureSummary(reviewArtifact: RuntimeParityCiEvidence | null): string {
+  if (!reviewArtifact) {
+    return "No GitHub Actions review artifact is attached to the latest parity result.";
+  }
+
+  const hostReadinessCapture = reviewArtifact.captures?.hostReadiness;
+  if (!hostReadinessCapture) {
+    return `${reviewArtifact.artifactName} is attached, but CI capture status was not recorded on this parity artifact.`;
+  }
+
+  if (hostReadinessCapture.status === "captured") {
+    const statusLabel = hostReadinessCapture.statusLabel ? ` (${hostReadinessCapture.statusLabel})` : "";
+    return `${reviewArtifact.artifactName} captured host-readiness successfully${statusLabel} in the matching GitHub Actions bundle.`;
+  }
+
+  return `${reviewArtifact.artifactName} did not capture host-readiness successfully; inspect the bundle or rerun CI evidence capture.`;
+}
+
+export function getReviewArtifactExpectedFiles(reviewArtifact: RuntimeParityCiEvidence | null): string {
+  if (!reviewArtifact?.artifactFiles.length) {
+    return "Artifact file list is not recorded on this parity result.";
+  }
+
+  return reviewArtifact.artifactFiles.join(", ");
 }
 
 function formatHours(value: number | null): string {

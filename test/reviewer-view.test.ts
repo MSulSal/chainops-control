@@ -10,6 +10,8 @@ import {
   getCaseListSubtitle,
   getOperationalMetricCards,
   getProviderSummary,
+  getReviewArtifactCaptureSummary,
+  getReviewArtifactExpectedFiles,
   getReviewLatencyCards,
   getTimelineBars,
   getQueueSummaryCards,
@@ -655,4 +657,52 @@ test("points case detail users back to the release focus case when another case 
   assert.equal(summary.tone, "warning");
   assert.equal(summary.focusCasePath, "/cases/case-1");
   assert.match(summary.focusCaseLabel, /latest focus case/i);
+});
+
+test("summarizes CI host-readiness capture and expected artifact files", () => {
+  const reviewArtifact = {
+    provider: "github_actions" as const,
+    artifactName: "runtime-parity-evidence",
+    artifactFiles: [
+      "runtime-parity-latest.json",
+      "latest-release-record.json",
+      "host-readiness.json",
+      "ci-evidence-summary.json",
+      "README.md"
+    ],
+    reviewHint: "Download the runtime-parity-evidence artifact.",
+    captures: {
+      runtimeParity: {
+        status: "captured" as const
+      },
+      releaseRecord: {
+        status: "captured" as const
+      },
+      hostReadiness: {
+        status: "captured" as const,
+        statusLabel: "Watch"
+      }
+    },
+    run: {
+      runUrl: "https://github.com/MSulSal/chainops-control/actions/runs/123456789"
+    }
+  };
+
+  assert.match(getReviewArtifactCaptureSummary(reviewArtifact), /captured host-readiness successfully \(Watch\)/i);
+  assert.equal(
+    getReviewArtifactExpectedFiles(reviewArtifact),
+    "runtime-parity-latest.json, latest-release-record.json, host-readiness.json, ci-evidence-summary.json, README.md"
+  );
+  assert.match(
+    getReviewArtifactCaptureSummary({
+      ...reviewArtifact,
+      captures: {
+        ...reviewArtifact.captures,
+        hostReadiness: {
+          status: "unavailable"
+        }
+      }
+    }),
+    /did not capture host-readiness successfully/i
+  );
 });

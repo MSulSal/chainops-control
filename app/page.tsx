@@ -19,6 +19,8 @@ import {
 import {
   formatTimestamp,
   getActiveFilterChips,
+  getReviewArtifactCaptureSummary,
+  getReviewArtifactExpectedFiles,
   getWorkspaceOperationalGuide,
   getOperationalMetricCards,
   getQueueAnalyticsCards,
@@ -344,9 +346,7 @@ export default async function ReviewerWorkspacePage({
             <div className="fact">
               <strong>CI review path</strong>
               <span className="muted">
-                {releaseRecordReviewArtifact
-                  ? `${releaseRecordReviewArtifact.artifactName} from the matching GitHub Actions run carries the raw parity JSON, release record JSON, and capture summary.`
-                  : "No GitHub Actions review artifact is attached to the latest parity result."}
+                {getReviewArtifactCaptureSummary(releaseRecordReviewArtifact)}
               </span>
             </div>
           </div>
@@ -393,6 +393,7 @@ export default async function ReviewerWorkspacePage({
                   <li>{`Focus trace: ${releaseRecord.evidence.focusTraceId ?? "No focus trace in current filtered queue."}`}</li>
                   <li>{`Rollback decision: ${releaseRecord.rollback.decision}`}</li>
                   <li>{`Provider-backed host status: ${releaseRecordHostReadiness?.overall.statusLabel ?? "Unavailable"}`}</li>
+                  <li>{`CI host-readiness capture: ${releaseRecordReviewArtifact?.captures?.hostReadiness.statusLabel ?? releaseRecordReviewArtifact?.captures?.hostReadiness.status ?? "Not recorded"}`}</li>
                 </ul>
               </article>
               <article className="metric-card">
@@ -479,9 +480,15 @@ export default async function ReviewerWorkspacePage({
                 <>
                   <div className="fact">
                     <strong>Artifact bundle</strong>
-                    <span className="mono">
-                      {releaseRecordReviewArtifact.artifactName}: {releaseRecordReviewArtifact.artifactFiles.join(", ")}
-                    </span>
+                    <span className="mono">{releaseRecordReviewArtifact.artifactName}</span>
+                  </div>
+                  <div className="fact">
+                    <strong>CI host-readiness capture</strong>
+                    <span className="muted">{getReviewArtifactCaptureSummary(releaseRecordReviewArtifact)}</span>
+                  </div>
+                  <div className="fact">
+                    <strong>Expected bundle files</strong>
+                    <span className="mono">{getReviewArtifactExpectedFiles(releaseRecordReviewArtifact)}</span>
                   </div>
                   <div className="fact">
                     <strong>Review hint</strong>

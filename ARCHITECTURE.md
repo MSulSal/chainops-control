@@ -134,6 +134,10 @@ The next release-evidence step still stays inside that same artifact boundary. `
 
 The next reviewability step still stays inside the existing GitHub Actions artifact flow. `npm run capture:ci-evidence` now downloads `GET /exports/host-readiness` into the same `runtime-parity-evidence` bundle that already carries the persisted runtime-parity JSON, the latest reachable release record, and the capture summary. That keeps remote release review download-only and lets an operator compare stale-runtime evidence, release status, and provider-backed sandbox blockers from one package instead of stitching together multiple exports by hand.
 
+## 2026-07-07 CI host-readiness status decision
+
+The next reviewability step still stays on that same persisted parity contract instead of adding a second CI-summary endpoint. `npm run capture:ci-evidence` now writes whether host-readiness capture succeeded back onto the persisted runtime-parity artifact, and the release record plus reviewer workspace read that same status alongside the expected bundle files. That keeps the UI honest about the difference between "the host is blocked" and "CI never captured the host snapshot" while preserving one artifact path for local runtime evidence, release review, and CI bundle hints.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

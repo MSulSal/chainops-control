@@ -2,6 +2,18 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export type RuntimeParityStatus = "passed" | "failed";
+export type RuntimeParityEvidenceCaptureStatus = "captured" | "missing" | "unavailable";
+
+export const RUNTIME_PARITY_ARTIFACT_FILES = [
+  "runtime-parity-latest.json",
+  "latest-release-record.json",
+  "host-readiness.json",
+  "ci-evidence-summary.json",
+  "README.md"
+] as const;
+
+export const RUNTIME_PARITY_ARTIFACT_REVIEW_HINT =
+  "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, host-readiness JSON, and capture summary without rerunning the live smoke path.";
 
 export type RuntimeParityExportCheck = {
   path: string;
@@ -14,6 +26,18 @@ export type RuntimeParityCiEvidence = {
   artifactName: string;
   artifactFiles: string[];
   reviewHint: string;
+  captures?: {
+    runtimeParity: {
+      status: Extract<RuntimeParityEvidenceCaptureStatus, "captured" | "missing">;
+    };
+    releaseRecord: {
+      status: Extract<RuntimeParityEvidenceCaptureStatus, "captured" | "unavailable">;
+    };
+    hostReadiness: {
+      status: Extract<RuntimeParityEvidenceCaptureStatus, "captured" | "unavailable">;
+      statusLabel?: string;
+    };
+  };
   run: {
     repository?: string;
     runId?: string;

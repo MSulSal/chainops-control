@@ -90,7 +90,33 @@ test("fetches the latest release record with reviewer filters", async () => {
             ignoredFields: ["generatedAt"],
             failureMode: "Treat the runtime as stale.",
             lastResult: null,
-            reviewArtifact: null
+            reviewArtifact: {
+              provider: "github_actions",
+              artifactName: "runtime-parity-evidence",
+              artifactFiles: [
+                "runtime-parity-latest.json",
+                "latest-release-record.json",
+                "host-readiness.json",
+                "ci-evidence-summary.json",
+                "README.md"
+              ],
+              reviewHint: "Download the runtime-parity-evidence artifact.",
+              captures: {
+                runtimeParity: {
+                  status: "captured"
+                },
+                releaseRecord: {
+                  status: "captured"
+                },
+                hostReadiness: {
+                  status: "captured",
+                  statusLabel: "Blocked"
+                }
+              },
+              run: {
+                runUrl: "https://github.com/MSulSal/chainops-control/actions/runs/123456789"
+              }
+            }
           }
         },
         evidence: {
@@ -181,6 +207,7 @@ test("fetches the latest release record with reviewer filters", async () => {
     assert.equal(record.scope, "release_record");
     assert.equal(record.release.version, "0.1.0");
     assert.equal(record.verification.hostReadiness.lastResult?.overall.statusLabel, "Blocked");
+    assert.equal(record.verification.runtimeParity.reviewArtifact?.captures?.hostReadiness.status, "captured");
     assert.equal(record.evidence.focusTraceId, "trace-demo-provider-timeout");
   } finally {
     globalThis.fetch = originalFetch;

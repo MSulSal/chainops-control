@@ -110,7 +110,7 @@ Expected result:
 - If any required export is missing or diverges from that contract, treat the runtime as stale and do not treat the release record as current.
 - If startup or readiness stalls, the command fails with the last observed health/readiness error so runtime ordering problems are visible in CI.
 - The command writes its latest pass/fail result to `data/runtime-parity/latest.json`, which the reviewer workspace and release record reuse directly.
-- When GitHub Actions context is present, the same artifact also records the matching run URL, artifact name, expected bundle files, and a review hint for downloading the CI evidence bundle.
+- When GitHub Actions context is present, the same artifact also records the matching run URL, artifact name, expected bundle files, host-readiness capture status, and a review hint for downloading the CI evidence bundle.
 
 GitHub Actions evidence capture:
 
@@ -125,7 +125,7 @@ Expected result:
 - It also downloads `GET /exports/host-readiness` into `artifacts/runtime-parity/host-readiness.json` so the same bundle carries current Docker, Terraform, and provider-prerequisite blockers.
 - It writes `artifacts/runtime-parity/ci-evidence-summary.json` and `artifacts/runtime-parity/README.md` so a reviewer can inspect the parity status, release-record capture status, host-readiness capture status, and matching GitHub Actions run metadata after downloading the CI artifact.
 - The CI workflow uploads that folder as the `runtime-parity-evidence` artifact on every run, including failed parity runs.
-- The reviewer workspace and release record now reuse the same run URL and artifact-name hints from the persisted parity result, so the operator can move from a stale verdict to the matching GitHub Actions bundle without opening the workflow file first.
+- The reviewer workspace and release record now reuse the same run URL, artifact-name hints, expected bundle files, and host-readiness capture status from the persisted parity result, so the operator can move from a stale verdict to the matching GitHub Actions bundle without opening the workflow file first.
 - The reviewer workspace also previews the latest release record from that same contract, including version, release status, required commands, focus-case links, rollback triggers, and product boundaries, before any JSON download is needed.
 
 ## Terraform sandbox
@@ -184,7 +184,7 @@ Expected result:
 16. Use `Export OpenTelemetry seam` from the workspace and confirm the JSON includes deterministic hex trace/span IDs, local spans for each recorded workflow stage, aggregate metrics, and explicit no-collector boundaries.
 17. Use `Export latest release record` from the workspace and confirm the JSON includes the current version, the required verification commands, and rollback evidence tied to a visible trace or case export.
 18. Confirm the release record section shows the last runtime parity result, including pass/fail status, checked base URL, per-export evidence, and the GitHub Actions artifact/run hint when the latest parity result came from CI.
-19. Confirm the release record section also previews the required commands, focus-case links, rollback triggers, host-readiness blockers, and boundaries from the same exported artifact instead of only download links.
+19. Confirm the release record section also previews the required commands, focus-case links, rollback triggers, host-readiness blockers, CI host-readiness capture status, expected bundle files, and boundaries from the same exported artifact instead of only download links.
 20. Use `Export latest runtime parity` when available and confirm the JSON matches the pass/fail summary shown in the release record section.
 21. Open the focus case from the release record, confirm the case-detail page shows whether the current case is the release anchor, and verify the rollback drill evidence matches the exported release record.
 22. From the case-detail release-evidence panel, confirm `Export latest release record`, `Export telemetry handoff`, and the focus-case snapshot links all resolve without leaving the API-backed evidence path.

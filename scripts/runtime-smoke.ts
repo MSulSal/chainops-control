@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { setTimeout as delay } from "node:timers/promises";
 import { runSeededDemoSmokeTest } from "../src/demo-smoke.ts";
-import { writeLatestRuntimeParityResult, type RuntimeParityCiEvidence } from "../src/runtime-parity.ts";
+import {
+  RUNTIME_PARITY_ARTIFACT_FILES,
+  RUNTIME_PARITY_ARTIFACT_REVIEW_HINT,
+  writeLatestRuntimeParityResult,
+  type RuntimeParityCiEvidence
+} from "../src/runtime-parity.ts";
 
 type HealthResponse = {
   status: string;
@@ -22,13 +27,6 @@ const timeoutMs = readNumberEnv("CHAINOPS_SMOKE_TIMEOUT_MS", 30_000);
 const pollIntervalMs = readNumberEnv("CHAINOPS_SMOKE_POLL_INTERVAL_MS", 500);
 const comparedExports = ["/exports/telemetry", "/exports/telemetry/opentelemetry", "/exports/releases/latest"];
 const artifactName = process.env.CHAINOPS_CI_ARTIFACT_NAME?.trim() || "runtime-parity-evidence";
-const artifactFiles = [
-  "runtime-parity-latest.json",
-  "latest-release-record.json",
-  "host-readiness.json",
-  "ci-evidence-summary.json",
-  "README.md"
-];
 const ignoredFields = [
   "generatedAt",
   "verification.hostReadiness.lastResult.generatedAt",
@@ -115,9 +113,19 @@ function buildCiEvidence(env: NodeJS.ProcessEnv = process.env): RuntimeParityCiE
   return {
     provider: "github_actions",
     artifactName,
-    artifactFiles,
-    reviewHint:
-      "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, host-readiness JSON, and capture summary without rerunning the live smoke path.",
+    artifactFiles: [...RUNTIME_PARITY_ARTIFACT_FILES],
+    reviewHint: RUNTIME_PARITY_ARTIFACT_REVIEW_HINT,
+    captures: {
+      runtimeParity: {
+        status: "captured"
+      },
+      releaseRecord: {
+        status: "unavailable"
+      },
+      hostReadiness: {
+        status: "unavailable"
+      }
+    },
     run: {
       repository,
       runId,

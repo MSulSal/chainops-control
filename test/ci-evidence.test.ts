@@ -103,6 +103,8 @@ test("captures runtime parity and release evidence into a reviewable artifact bu
   assert.equal(summary.releaseRecord.version, "0.1.0");
   assert.equal(summary.hostReadiness.status, "captured");
   assert.equal(summary.hostReadiness.statusLabel, "Watch");
+  assert.equal(summary.runtimeParity.result?.ciEvidence?.captures?.hostReadiness.status, "captured");
+  assert.equal(summary.runtimeParity.result?.ciEvidence?.captures?.hostReadiness.statusLabel, "Watch");
   assert.equal(
     summary.githubRun.runUrl,
     "https://github.com/MSulSal/chainops-control/actions/runs/123456789"
@@ -114,6 +116,7 @@ test("captures runtime parity and release evidence into a reviewable artifact bu
 
   const runtimeParityArtifact = JSON.parse(await readFile(path.join(outputDir, "runtime-parity-latest.json"), "utf8"));
   assert.equal(runtimeParityArtifact.error, "404 Not Found");
+  assert.equal(runtimeParityArtifact.ciEvidence.captures.hostReadiness.status, "captured");
 
   const releaseRecordArtifact = JSON.parse(await readFile(path.join(outputDir, "latest-release-record.json"), "utf8"));
   assert.equal(releaseRecordArtifact.release.version, "0.1.0");
@@ -155,6 +158,7 @@ test("keeps the artifact bundle reviewable when the live release record is unava
   assert.equal(summary.runtimeParity.status, "captured");
   assert.equal(summary.releaseRecord.status, "unavailable");
   assert.equal(summary.hostReadiness.status, "unavailable");
+  assert.equal(summary.runtimeParity.result?.ciEvidence?.captures?.hostReadiness.status, "unavailable");
   assert.match(summary.releaseRecord.error ?? "", /404 Not Found/);
   assert.match(summary.hostReadiness.error ?? "", /404 Not Found/);
 

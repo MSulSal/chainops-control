@@ -727,6 +727,18 @@ test("exports a latest release record artifact from the current filtered queue",
         ],
         reviewHint:
           "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, host-readiness JSON, and capture summary without rerunning the live smoke path.",
+        captures: {
+          runtimeParity: {
+            status: "captured"
+          },
+          releaseRecord: {
+            status: "captured"
+          },
+          hostReadiness: {
+            status: "captured",
+            statusLabel: "Blocked"
+          }
+        },
         run: {
           repository: "MSulSal/chainops-control",
           runId: "123456789",
@@ -767,6 +779,7 @@ test("exports a latest release record artifact from the current filtered queue",
   assert.equal(snapshot.verification.runtimeParity.lastResult?.status, "failed");
   assert.equal(snapshot.verification.runtimeParity.lastResult?.exportChecks[1]?.status, "missing");
   assert.equal(snapshot.verification.runtimeParity.reviewArtifact?.artifactName, "runtime-parity-evidence");
+  assert.equal(snapshot.verification.runtimeParity.reviewArtifact?.captures?.hostReadiness.status, "captured");
   assert.equal(
     snapshot.verification.runtimeParity.reviewArtifact?.run.runUrl,
     "https://github.com/MSulSal/chainops-control/actions/runs/123456789"
@@ -814,6 +827,18 @@ test("returns the latest persisted runtime parity result when available", async 
         ],
         reviewHint:
           "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, host-readiness JSON, and capture summary without rerunning the live smoke path.",
+        captures: {
+          runtimeParity: {
+            status: "captured"
+          },
+          releaseRecord: {
+            status: "captured"
+          },
+          hostReadiness: {
+            status: "captured",
+            statusLabel: "Ready"
+          }
+        },
         run: {
           repository: "MSulSal/chainops-control",
           runId: "987654321",

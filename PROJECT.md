@@ -42,6 +42,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 24: added a host-readiness export plus reviewer-workspace diagnostics that report Docker, Compose, Terraform, and live-provider prerequisites so provider-backed sandbox blockers stay explicit on the current host before the next disposable-target attempt.
 - Slice 25: threaded that host-readiness artifact into the latest release record and both release-evidence views so runtime parity and provider-backed sandbox blockers now stay attached to one bounded export path.
 - Slice 26: extended the GitHub Actions runtime-parity evidence bundle to capture the live host-readiness artifact too, so remote reviewers can download parity status, release-record evidence, and current provider-backed sandbox blockers from one CI package.
+- Slice 27: persisted whether that matching GitHub Actions bundle actually captured host-readiness successfully, then surfaced that status plus the expected bundle files directly in the release record and reviewer workspace.
 
 ## Success evidence
 

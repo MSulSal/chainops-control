@@ -1,7 +1,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { HostReadinessSnapshot } from "./host-readiness.ts";
-import { getRuntimeParityArtifactPath, type RuntimeParityResult } from "./runtime-parity.ts";
+import {
+  getRuntimeParityArtifactPath,
+  RUNTIME_PARITY_ARTIFACT_FILES,
+  RUNTIME_PARITY_ARTIFACT_REVIEW_HINT,
+  type RuntimeParityCiEvidence,
+  type RuntimeParityResult
+} from "./runtime-parity.ts";
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
@@ -86,15 +92,15 @@ export async function captureRuntimeParityEvidence(
     githubRun: buildGitHubRunMetadata(env, artifactName),
     notes
   };
+  let runtimeParityResult: RuntimeParityResult | null = null;
 
   try {
-    const runtimeParity = JSON.parse(await readFile(runtimeParityPath, "utf8")) as RuntimeParityResult;
-    await writeFile(summary.runtimeParity.artifactPath, JSON.stringify(runtimeParity, null, 2));
+    runtimeParityResult = JSON.parse(await readFile(runtimeParityPath, "utf8")) as RuntimeParityResult;
     summary.runtimeParity = {
       status: "captured",
       artifactPath: summary.runtimeParity.artifactPath,
-      checkedAt: runtimeParity.checkedAt,
-      result: runtimeParity
+      checkedAt: runtimeParityResult.checkedAt,
+      result: runtimeParityResult
     };
   } catch (error) {
     const errorCode = (error as NodeJS.ErrnoException).code;
@@ -162,6 +168,18 @@ export async function captureRuntimeParityEvidence(
     notes.push("The live host-readiness export was not reachable during capture; review the latest release record or local host-readiness export directly.");
   }
 
+  if (runtimeParityResult) {
+    const ciEvidence = buildRuntimeParityCiEvidence(summary, runtimeParityResult.ciEvidence);
+    const enrichedRuntimeParity = {
+      ...runtimeParityResult,
+      ciEvidence
+    };
+
+    await writeFile(summary.runtimeParity.artifactPath, JSON.stringify(enrichedRuntimeParity, null, 2));
+    await writeFile(runtimeParityPath, JSON.stringify(enrichedRuntimeParity, null, 2));
+    summary.runtimeParity.result = enrichedRuntimeParity;
+  }
+
   await writeFile(path.join(outputDir, "ci-evidence-summary.json"), JSON.stringify(summary, null, 2));
   await writeFile(path.join(outputDir, "README.md"), buildRuntimeParityEvidenceReadme(summary));
 
@@ -223,5 +241,38 @@ function buildGitHubRunMetadata(env: NodeJS.ProcessEnv, artifactName: string): R
     sha: env.GITHUB_SHA?.trim(),
     serverUrl,
     runUrl
+  };
+}
+
+function buildRuntimeParityCiEvidence(
+  summary: RuntimeParityEvidenceSummary,
+  existing: RuntimeParityCiEvidence | undefined
+): RuntimeParityCiEvidence {
+  return {
+    provider: "github_actions",
+    artifactName: existing?.artifactName ?? summary.artifactName,
+    artifactFiles: existing?.artifactFiles ?? [...RUNTIME_PARITY_ARTIFACT_FILES],
+    reviewHint: existing?.reviewHint ?? RUNTIME_PARITY_ARTIFACT_REVIEW_HINT,
+    captures: {
+      runtimeParity: {
+        status: summary.runtimeParity.status
+      },
+      releaseRecord: {
+        status: summary.releaseRecord.status
+      },
+      hostReadiness: {
+        status: summary.hostReadiness.status,
+        statusLabel: summary.hostReadiness.statusLabel
+      }
+    },
+    run: {
+      repository: existing?.run.repository ?? summary.githubRun.repository,
+      runId: existing?.run.runId ?? summary.githubRun.runId,
+      runAttempt: existing?.run.runAttempt ?? summary.githubRun.runAttempt,
+      refName: existing?.run.refName ?? summary.githubRun.refName,
+      sha: existing?.run.sha ?? summary.githubRun.sha,
+      serverUrl: existing?.run.serverUrl ?? summary.githubRun.serverUrl,
+      runUrl: existing?.run.runUrl ?? summary.githubRun.runUrl
+    }
   };
 }

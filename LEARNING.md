@@ -27,6 +27,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 24: the cleanest way to keep host-tooling blockers honest was to export one API-backed host-readiness artifact and render that in the workspace, instead of maintaining a separate prose checklist that could drift from the current machine state.
 - Applied in slice 25: the cleanest way to keep provider-backed blockers attached to release review was to embed the existing host-readiness artifact inside the release record instead of inventing a second release-only checklist or duplicating host-state fetch logic in React.
 - Applied in slice 26: the cleanest way to keep remote release review honest was to capture the same host-readiness artifact in the CI bundle instead of forcing reviewers to infer host blockers from parity failures or fetch a second export outside the artifact package.
+- Applied in slice 27: the cleanest way to make CI blocker capture status visible was to enrich the existing persisted parity artifact with host-readiness capture metadata instead of adding a second review-status endpoint or artifact index.
+- Applied in slice 27: rendering the expected bundle files and host-readiness capture result from the same release-record contract keeps the reviewer workspace aligned with the downloaded CI artifact and makes release-review gaps easier to explain.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -96,6 +98,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 24: local prerequisite checks are more defensible when Docker, Compose, Terraform, and provider-base-URL status come from one bounded artifact that says exactly what is blocked on this host instead of implying a provider-backed target is already validated.
 - Applied in slice 25: release evidence stays easier to debug when runtime-parity status and host-readiness blockers travel in the same exported artifact, because an operator can explain both "what the runtime did" and "why the next sandbox attempt is still paused" without leaving the existing API boundary.
 - Applied in slice 26: CI evidence stays easier to hand off when the raw host-readiness snapshot ships beside the runtime-parity and release-record JSON, because a reviewer can compare stale-runtime evidence with Docker/Terraform/provider blockers from the same downloadable bundle.
+- Applied in slice 27: CI evidence becomes easier to triage when the persisted parity artifact records whether host-readiness capture itself succeeded, because the workspace can distinguish "host blocked" from "bundle never captured the host snapshot" without reading workflow logs first.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
@@ -123,3 +126,4 @@ Be able to explain:
 18. Why carry the GitHub Actions run URL and artifact hints on the persisted parity artifact instead of adding a separate release-evidence endpoint or table?
 19. Why render the release-record export directly in the workspace instead of rebuilding the same release summary as client-only UI state?
 20. Why embed host-readiness inside the release record instead of keeping it only as a separate export?
+21. Why persist CI host-readiness capture status on the parity artifact instead of inferring it from artifact filenames or adding another endpoint?
