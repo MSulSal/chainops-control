@@ -92,3 +92,7 @@ The next sandbox-facing slice exports current host prerequisite status through t
 ## Release-record host-readiness tradeoff
 
 The next reviewability step embeds that existing host-readiness artifact inside the release record instead of introducing a second release-only host checklist or refetching a separate summary in every UI surface. That keeps runtime parity, rollback context, and provider-backed sandbox blockers attached to one exported contract while preserving the honest boundary: the artifact still reports current host prerequisites only and does not claim a successful provider-backed environment check.
+
+## CI host-readiness bundle tradeoff
+
+The next evidence step captures the live host-readiness export into the same GitHub Actions artifact that already stores runtime parity and release-record evidence instead of asking remote reviewers to fetch a second export or infer host blockers from parity status alone. That keeps release review download-only and consistent with the existing artifact path, while preserving the honest boundary: the host snapshot is still just a point-in-time prerequisite report from the checked machine, not proof that a provider-backed sandbox was exercised successfully.

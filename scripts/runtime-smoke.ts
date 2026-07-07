@@ -25,6 +25,7 @@ const artifactName = process.env.CHAINOPS_CI_ARTIFACT_NAME?.trim() || "runtime-p
 const artifactFiles = [
   "runtime-parity-latest.json",
   "latest-release-record.json",
+  "host-readiness.json",
   "ci-evidence-summary.json",
   "README.md"
 ];
@@ -116,7 +117,7 @@ function buildCiEvidence(env: NodeJS.ProcessEnv = process.env): RuntimeParityCiE
     artifactName,
     artifactFiles,
     reviewHint:
-      "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, and capture summary without rerunning the live smoke path.",
+      "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, host-readiness JSON, and capture summary without rerunning the live smoke path.",
     run: {
       repository,
       runId,

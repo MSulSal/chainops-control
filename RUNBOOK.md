@@ -122,7 +122,8 @@ Expected result:
 
 - The command copies the latest persisted runtime-parity JSON into `artifacts/runtime-parity/runtime-parity-latest.json`.
 - It attempts to download the live `GET /exports/releases/latest` artifact into the same folder while the API container is still running.
-- It writes `artifacts/runtime-parity/ci-evidence-summary.json` and `artifacts/runtime-parity/README.md` so a reviewer can inspect the parity status, release-record capture status, and matching GitHub Actions run metadata after downloading the CI artifact.
+- It also downloads `GET /exports/host-readiness` into `artifacts/runtime-parity/host-readiness.json` so the same bundle carries current Docker, Terraform, and provider-prerequisite blockers.
+- It writes `artifacts/runtime-parity/ci-evidence-summary.json` and `artifacts/runtime-parity/README.md` so a reviewer can inspect the parity status, release-record capture status, host-readiness capture status, and matching GitHub Actions run metadata after downloading the CI artifact.
 - The CI workflow uploads that folder as the `runtime-parity-evidence` artifact on every run, including failed parity runs.
 - The reviewer workspace and release record now reuse the same run URL and artifact-name hints from the persisted parity result, so the operator can move from a stale verdict to the matching GitHub Actions bundle without opening the workflow file first.
 - The reviewer workspace also previews the latest release record from that same contract, including version, release status, required commands, focus-case links, rollback triggers, and product boundaries, before any JSON download is needed.

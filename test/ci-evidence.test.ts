@@ -44,25 +44,65 @@ test("captures runtime parity and release evidence into a reviewable artifact bu
       GITHUB_REF_NAME: "main",
       GITHUB_SHA: "deadbeef"
     },
-    fetcher: async () =>
-      new Response(
-        JSON.stringify({
-          release: {
-            version: "0.1.0",
-            channel: "local_container_runtime"
+    fetcher: async (input) => {
+      const url = String(input);
+
+      if (url.endsWith("/exports/releases/latest")) {
+        return new Response(
+          JSON.stringify({
+            release: {
+              version: "0.1.0",
+              channel: "local_container_runtime"
+            }
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" }
           }
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" }
-        }
-      )
+        );
+      }
+
+      if (url.endsWith("/exports/host-readiness")) {
+        return new Response(
+          JSON.stringify({
+            generatedAt: "2026-07-06T20:00:00.000Z",
+            scope: "host_readiness",
+            overall: {
+              statusLabel: "Watch",
+              summary: "Provider-backed sandbox validation remains incomplete on this host."
+            },
+            runtime: {
+              dockerComposeFile: "docker-compose.yml",
+              terraformSandboxPath: "infra/terraform/sandbox",
+              reviewerWorkspacePath: "/",
+              apiBaseUrl: "http://127.0.0.1:4317"
+            },
+            checks: [],
+            providerSandbox: {
+              status: "warning",
+              summary: "The host can keep exercising the deterministic runtime path.",
+              missingRequirements: ["Terraform CLI: Terraform CLI is unavailable on this host."],
+              nextSteps: ["Resolve Terraform CLI and rerun `terraform version -json`."]
+            },
+            boundaries: ["Local host readiness only."]
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          }
+        );
+      }
+
+      return new Response("missing", { status: 404, statusText: "Not Found" });
+    }
   });
 
   assert.equal(summary.runtimeParity.status, "captured");
   assert.equal(summary.runtimeParity.result?.status, "failed");
   assert.equal(summary.releaseRecord.status, "captured");
   assert.equal(summary.releaseRecord.version, "0.1.0");
+  assert.equal(summary.hostReadiness.status, "captured");
+  assert.equal(summary.hostReadiness.statusLabel, "Watch");
   assert.equal(
     summary.githubRun.runUrl,
     "https://github.com/MSulSal/chainops-control/actions/runs/123456789"
@@ -70,12 +110,16 @@ test("captures runtime parity and release evidence into a reviewable artifact bu
 
   const readme = await readFile(path.join(outputDir, "README.md"), "utf8");
   assert.match(readme, /Runtime parity status: failed/);
+  assert.match(readme, /Host-readiness status: Watch/);
 
   const runtimeParityArtifact = JSON.parse(await readFile(path.join(outputDir, "runtime-parity-latest.json"), "utf8"));
   assert.equal(runtimeParityArtifact.error, "404 Not Found");
 
   const releaseRecordArtifact = JSON.parse(await readFile(path.join(outputDir, "latest-release-record.json"), "utf8"));
   assert.equal(releaseRecordArtifact.release.version, "0.1.0");
+
+  const hostReadinessArtifact = JSON.parse(await readFile(path.join(outputDir, "host-readiness.json"), "utf8"));
+  assert.equal(hostReadinessArtifact.overall.statusLabel, "Watch");
 });
 
 test("keeps the artifact bundle reviewable when the live release record is unavailable", async () => {
@@ -110,9 +154,12 @@ test("keeps the artifact bundle reviewable when the live release record is unava
 
   assert.equal(summary.runtimeParity.status, "captured");
   assert.equal(summary.releaseRecord.status, "unavailable");
+  assert.equal(summary.hostReadiness.status, "unavailable");
   assert.match(summary.releaseRecord.error ?? "", /404 Not Found/);
+  assert.match(summary.hostReadiness.error ?? "", /404 Not Found/);
 
   const summaryJson = JSON.parse(await readFile(path.join(outputDir, "ci-evidence-summary.json"), "utf8"));
   assert.equal(summaryJson.releaseRecord.status, "unavailable");
+  assert.equal(summaryJson.hostReadiness.status, "unavailable");
   assert.equal(Array.isArray(summaryJson.notes), true);
 });

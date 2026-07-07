@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { HostReadinessSnapshot } from "./host-readiness.ts";
 import { getRuntimeParityArtifactPath, type RuntimeParityResult } from "./runtime-parity.ts";
 
 type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -19,6 +20,12 @@ export type RuntimeParityEvidenceSummary = {
     artifactPath?: string;
     version?: string;
     channel?: string;
+    error?: string;
+  };
+  hostReadiness: {
+    status: "captured" | "unavailable";
+    artifactPath?: string;
+    statusLabel?: HostReadinessSnapshot["overall"]["statusLabel"];
     error?: string;
   };
   githubRun: {
@@ -73,6 +80,9 @@ export async function captureRuntimeParityEvidence(
     releaseRecord: {
       status: "unavailable"
     },
+    hostReadiness: {
+      status: "unavailable"
+    },
     githubRun: buildGitHubRunMetadata(env, artifactName),
     notes
   };
@@ -125,6 +135,33 @@ export async function captureRuntimeParityEvidence(
     notes.push("The live release-record export was not reachable during capture; inspect the runtime-parity JSON for the last smoke result.");
   }
 
+  const hostReadinessPath = path.join(outputDir, "host-readiness.json");
+  summary.hostReadiness.artifactPath = hostReadinessPath;
+
+  try {
+    const response = await fetcher(`${baseUrl}/exports/host-readiness`, {
+      headers: { accept: "application/json" }
+    });
+    if (!response.ok) {
+      throw new Error(`host readiness request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const hostReadiness = (await response.json()) as HostReadinessSnapshot;
+    await writeFile(hostReadinessPath, JSON.stringify(hostReadiness, null, 2));
+    summary.hostReadiness = {
+      status: "captured",
+      artifactPath: hostReadinessPath,
+      statusLabel: hostReadiness.overall.statusLabel
+    };
+  } catch (error) {
+    summary.hostReadiness = {
+      status: "unavailable",
+      artifactPath: hostReadinessPath,
+      error: (error as Error).message
+    };
+    notes.push("The live host-readiness export was not reachable during capture; review the latest release record or local host-readiness export directly.");
+  }
+
   await writeFile(path.join(outputDir, "ci-evidence-summary.json"), JSON.stringify(summary, null, 2));
   await writeFile(path.join(outputDir, "README.md"), buildRuntimeParityEvidenceReadme(summary));
 
@@ -139,7 +176,8 @@ export function buildRuntimeParityEvidenceReadme(summary: RuntimeParityEvidenceS
     `Artifact name: ${summary.artifactName}`,
     `Checked base URL: ${summary.baseUrl}`,
     `Runtime parity artifact: ${summary.runtimeParity.status}`,
-    `Release record capture: ${summary.releaseRecord.status}`
+    `Release record capture: ${summary.releaseRecord.status}`,
+    `Host-readiness capture: ${summary.hostReadiness.status}`
   ];
 
   if (summary.runtimeParity.result) {
@@ -153,6 +191,10 @@ export function buildRuntimeParityEvidenceReadme(summary: RuntimeParityEvidenceS
 
   if (summary.releaseRecord.channel) {
     lines.push(`Release channel: ${summary.releaseRecord.channel}`);
+  }
+
+  if (summary.hostReadiness.statusLabel) {
+    lines.push(`Host-readiness status: ${summary.hostReadiness.statusLabel}`);
   }
 
   if (summary.githubRun.runUrl) {

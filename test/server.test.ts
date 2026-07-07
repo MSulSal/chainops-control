@@ -721,11 +721,12 @@ test("exports a latest release record artifact from the current filtered queue",
         artifactFiles: [
           "runtime-parity-latest.json",
           "latest-release-record.json",
+          "host-readiness.json",
           "ci-evidence-summary.json",
           "README.md"
         ],
         reviewHint:
-          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, and capture summary without rerunning the live smoke path.",
+          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, host-readiness JSON, and capture summary without rerunning the live smoke path.",
         run: {
           repository: "MSulSal/chainops-control",
           runId: "123456789",
@@ -807,11 +808,12 @@ test("returns the latest persisted runtime parity result when available", async 
         artifactFiles: [
           "runtime-parity-latest.json",
           "latest-release-record.json",
+          "host-readiness.json",
           "ci-evidence-summary.json",
           "README.md"
         ],
         reviewHint:
-          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, and capture summary without rerunning the live smoke path.",
+          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, host-readiness JSON, and capture summary without rerunning the live smoke path.",
         run: {
           repository: "MSulSal/chainops-control",
           runId: "987654321",
