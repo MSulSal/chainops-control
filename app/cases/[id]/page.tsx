@@ -353,6 +353,18 @@ export default async function CaseDetailPage({
                 </article>
               </div>
             ) : null}
+            {releaseRecord?.evidence.replay.history.length ? (
+              <article className="metric-card">
+                <p className="eyebrow">Replay outcome comparison</p>
+                <ul className="response-list">
+                  {releaseRecord.evidence.replay.history.map((event) => (
+                    <li key={`${event.at}-${event.attempt}`}>
+                      {`Attempt ${event.attempt} ${event.status === "failed_again" ? "failed again" : "recovered"} at ${formatTimestamp(event.at)} via ${event.traceId}. ${event.summary}`}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ) : null}
             {releaseRecordHostReadiness?.providerSandbox.missingRequirements.length ? (
               <div className="callout callout-info">
                 <strong>{`Provider-backed host status: ${releaseRecordHostReadiness.overall.statusLabel}.`}</strong>{" "}

@@ -23,6 +23,7 @@ export async function runSeededDemoSmokeTest(
 ): Promise<{
   scenario: string;
   failedCaseId: string;
+  replayFailedCaseId: string;
   replayRecoveredCaseId: string;
   traceIds: string[];
 }> {
@@ -100,14 +101,14 @@ export async function runSeededDemoSmokeTest(
     "/exports/releases/latest"
   ]);
 
-  const replayResponse = await fetchImpl(`${baseUrl}/cases/${failedCaseId}/replay`, {
+  const failedReplayResponse = await fetchImpl(`${baseUrl}/cases/${failedCaseId}/replay`, {
     method: "POST",
     headers: {
-      "x-request-id": "trace-demo-replay-recovered"
+      "x-request-id": "trace-demo-replay-failed-1"
     }
   });
-  assert.equal(replayResponse.status, 200);
-  const replayBody = (await replayResponse.json()) as {
+  assert.equal(failedReplayResponse.status, 200);
+  const failedReplayBody = (await failedReplayResponse.json()) as {
     recovered: boolean;
     replayAttempt: number;
     caseRecord: {
@@ -116,39 +117,96 @@ export async function runSeededDemoSmokeTest(
       traceId: string;
     };
   };
-  assert.equal(replayBody.recovered, true);
-  assert.equal(replayBody.replayAttempt, 1);
-  assert.equal(replayBody.caseRecord.id, failedCaseId);
-  assert.equal(replayBody.caseRecord.status, "pending_review");
-  assert.equal(replayBody.caseRecord.traceId, "trace-demo-replay-recovered");
+  assert.equal(failedReplayBody.recovered, false);
+  assert.equal(failedReplayBody.replayAttempt, 1);
+  assert.equal(failedReplayBody.caseRecord.id, failedCaseId);
+  assert.equal(failedReplayBody.caseRecord.status, "ingestion_failed");
+  assert.equal(failedReplayBody.caseRecord.traceId, "trace-demo-replay-failed-1");
+
+  const failedReplayCaseResponse = await fetchImpl(`${baseUrl}/exports/cases/${failedCaseId}`);
+  assert.equal(failedReplayCaseResponse.status, 200);
+  const failedReplayCaseSnapshot = (await failedReplayCaseResponse.json()) as CaseIncidentSnapshot;
+  assert.equal(failedReplayCaseSnapshot.caseRecord.status, "ingestion_failed");
+  assert.equal(failedReplayCaseSnapshot.caseRecord.traceId, "trace-demo-replay-failed-1");
+  assert.equal(
+    failedReplayCaseSnapshot.auditEvents.some((event) => event.type === "FAILED_CASE_REPLAY_REQUESTED"),
+    true
+  );
+  assert.equal(
+    failedReplayCaseSnapshot.auditEvents.some((event) => event.type === "FAILED_CASE_REPLAY_FAILED"),
+    true
+  );
+  assert.match(
+    failedReplayCaseSnapshot.incidentGuide.evidence.join(" "),
+    /replay attempt 1/i
+  );
+  assert.match(
+    failedReplayCaseSnapshot.incidentGuide.evidence.join(" "),
+    /repeated the failure/i
+  );
+
+  const releaseRecordAfterFailedReplay = await fetchImpl(`${baseUrl}/exports/releases/latest`);
+  assert.equal(releaseRecordAfterFailedReplay.status, 200);
+  const failedReplayReleaseRecordSnapshot = (await releaseRecordAfterFailedReplay.json()) as ReleaseRecordSnapshot;
+  assert.equal(failedReplayReleaseRecordSnapshot.evidence.focusCasePath, `/cases/${failedCaseId}`);
+  assert.equal(failedReplayReleaseRecordSnapshot.evidence.focusTraceId, "trace-demo-replay-failed-1");
+  assert.equal(failedReplayReleaseRecordSnapshot.evidence.replay.status, "failed_again");
+  assert.equal(failedReplayReleaseRecordSnapshot.evidence.replay.replayAttempt, 1);
+  assert.equal(failedReplayReleaseRecordSnapshot.evidence.replay.casePath, `/cases/${failedCaseId}`);
+  assert.equal(failedReplayReleaseRecordSnapshot.evidence.replay.traceId, "trace-demo-replay-failed-1");
+  assert.equal(failedReplayReleaseRecordSnapshot.evidence.replay.history.length, 1);
+  assert.equal(failedReplayReleaseRecordSnapshot.evidence.replay.history[0]?.status, "failed_again");
+  assert.equal(failedReplayReleaseRecordSnapshot.evidence.replay.history[0]?.traceId, "trace-demo-replay-failed-1");
+  assert.match(failedReplayReleaseRecordSnapshot.evidence.replay.summary, /latest provider fetch still ended in timeout/i);
+
+  const recoveredReplayResponse = await fetchImpl(`${baseUrl}/cases/${failedCaseId}/replay`, {
+    method: "POST",
+    headers: {
+      "x-request-id": "trace-demo-replay-recovered-2"
+    }
+  });
+  assert.equal(recoveredReplayResponse.status, 200);
+  const recoveredReplayBody = (await recoveredReplayResponse.json()) as {
+    recovered: boolean;
+    replayAttempt: number;
+    caseRecord: {
+      id: string;
+      status: string;
+      traceId: string;
+    };
+  };
+  assert.equal(recoveredReplayBody.recovered, true);
+  assert.equal(recoveredReplayBody.replayAttempt, 2);
+  assert.equal(recoveredReplayBody.caseRecord.id, failedCaseId);
+  assert.equal(recoveredReplayBody.caseRecord.status, "pending_review");
+  assert.equal(recoveredReplayBody.caseRecord.traceId, "trace-demo-replay-recovered-2");
 
   const replayedCaseResponse = await fetchImpl(`${baseUrl}/exports/cases/${failedCaseId}`);
   assert.equal(replayedCaseResponse.status, 200);
   const replayedCaseSnapshot = (await replayedCaseResponse.json()) as CaseIncidentSnapshot;
   assert.equal(replayedCaseSnapshot.caseRecord.status, "pending_review");
-  assert.equal(replayedCaseSnapshot.caseRecord.traceId, "trace-demo-replay-recovered");
-  assert.equal(
-    replayedCaseSnapshot.auditEvents.some((event) => event.type === "FAILED_CASE_REPLAY_REQUESTED"),
-    true
-  );
+  assert.equal(replayedCaseSnapshot.caseRecord.traceId, "trace-demo-replay-recovered-2");
   assert.equal(
     replayedCaseSnapshot.auditEvents.some((event) => event.type === "FAILED_CASE_REPLAY_RECOVERED"),
     true
   );
   assert.match(
     replayedCaseSnapshot.incidentGuide.evidence.join(" "),
-    /Recovered on replay attempt 1 with the original idempotency key/i
+    /Recovered on replay attempt 2 with the original idempotency key/i
   );
 
   const releaseRecordAfterReplay = await fetchImpl(`${baseUrl}/exports/releases/latest`);
   assert.equal(releaseRecordAfterReplay.status, 200);
   const replayReleaseRecordSnapshot = (await releaseRecordAfterReplay.json()) as ReleaseRecordSnapshot;
   assert.equal(replayReleaseRecordSnapshot.evidence.focusCasePath, `/cases/${failedCaseId}`);
-  assert.equal(replayReleaseRecordSnapshot.evidence.focusTraceId, "trace-demo-replay-recovered");
+  assert.equal(replayReleaseRecordSnapshot.evidence.focusTraceId, "trace-demo-replay-recovered-2");
   assert.equal(replayReleaseRecordSnapshot.evidence.replay.status, "recovered");
-  assert.equal(replayReleaseRecordSnapshot.evidence.replay.replayAttempt, 1);
+  assert.equal(replayReleaseRecordSnapshot.evidence.replay.replayAttempt, 2);
   assert.equal(replayReleaseRecordSnapshot.evidence.replay.casePath, `/cases/${failedCaseId}`);
-  assert.equal(replayReleaseRecordSnapshot.evidence.replay.traceId, "trace-demo-replay-recovered");
+  assert.equal(replayReleaseRecordSnapshot.evidence.replay.traceId, "trace-demo-replay-recovered-2");
+  assert.equal(replayReleaseRecordSnapshot.evidence.replay.history.length, 2);
+  assert.equal(replayReleaseRecordSnapshot.evidence.replay.history[0]?.status, "failed_again");
+  assert.equal(replayReleaseRecordSnapshot.evidence.replay.history[1]?.status, "recovered");
   assert.match(replayReleaseRecordSnapshot.evidence.replay.summary, /recovered this case/i);
 
   await fetchImpl(`${baseUrl}/cases`, {
@@ -209,7 +267,8 @@ export async function runSeededDemoSmokeTest(
   return {
     scenario: secondSeed.scenario,
     failedCaseId,
-    replayRecoveredCaseId: replayBody.caseRecord.id,
+    replayFailedCaseId: failedReplayBody.caseRecord.id,
+    replayRecoveredCaseId: recoveredReplayBody.caseRecord.id,
     traceIds
   };
 }

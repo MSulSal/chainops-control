@@ -64,6 +64,16 @@ export class FixtureTransactionProvider implements TransactionProvider {
     walletAddress: string;
     traceId: string;
   }): Promise<TransactionProviderResult> {
+    if (shouldForceFixtureTimeout(input.traceId)) {
+      throw new ProviderFetchError(
+        `fixture provider forced a timeout for replay evidence trace ${input.traceId}`,
+        {
+          code: "timeout",
+          timeoutMs: this.timeoutMs
+        }
+      );
+    }
+
     const walletAddress = normalizeWalletAddress(input.walletAddress);
     const transactions = buildTransactionSample(walletAddress);
 
@@ -80,6 +90,10 @@ export class FixtureTransactionProvider implements TransactionProvider {
       }
     };
   }
+}
+
+function shouldForceFixtureTimeout(traceId: string): boolean {
+  return /^trace-demo-replay-failed(?:-|$)/.test(traceId);
 }
 
 export class EtherscanTransactionProvider implements TransactionProvider {

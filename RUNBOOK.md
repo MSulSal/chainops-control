@@ -82,6 +82,7 @@ Expected result:
 - The record now also embeds the most recent persisted runtime-parity result when one exists, including the checked base URL, export-path statuses, latest failure summary, and any matching GitHub Actions review-artifact metadata.
 - The record also embeds the latest host-readiness snapshot and `/exports/host-readiness` path so provider-backed sandbox blockers are reviewed from the same release artifact instead of a separate checklist.
 - The record now also embeds replay evidence for the current focus case, including whether replay recovered, failed again, or has not been attempted yet, plus direct links back to the case page and case export.
+- The record now also keeps replay outcome history for the focus case, so a failed-again attempt and a later recovery can be compared from the same JSON artifact and reviewer release panel.
 
 Latest runtime-parity artifact:
 
@@ -209,7 +210,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4317/cases/<case-id>/replay
 ```
 
 The service reuses the original `Idempotency-Key`, updates the original failed case instead of creating a duplicate row, and records replay request plus recovery-vs-repeat outcome evidence in `audit_events`.
-`npm run smoke:demo` now exercises this same replay endpoint against the seeded failed case and expects the release record to surface the recovered replay story afterward.
+`npm run smoke:demo` now forces one deterministic replay failure first with `trace-demo-replay-failed-1`, then recovers the same seeded case with `trace-demo-replay-recovered-2`, and expects the release record to preserve both outcomes in replay history afterward.
 
 ## Failure paths
 

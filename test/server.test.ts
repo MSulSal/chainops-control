@@ -925,6 +925,7 @@ test("exports a latest release record artifact from the current filtered queue",
   assert.equal(snapshot.evidence.focusTraceId, "trace-release-record-timeout");
   assert.equal(snapshot.evidence.replay.status, "not_attempted");
   assert.equal(snapshot.evidence.replay.casePath, `/cases/${snapshot.evidence.focusCasePath?.split("/").at(-1)}`);
+  assert.equal(snapshot.evidence.replay.history.length, 0);
   assert.match(snapshot.evidence.replay.summary, /retry the intake with the same idempotency key/i);
   assert.match(snapshot.rollback.decision, /roll back/i);
 });
@@ -1069,6 +1070,7 @@ test("resets the seeded demo scenario and regenerates stable incident evidence",
   const smoke = await runSeededDemoSmokeTest(baseUrl);
   assert.equal(smoke.scenario, "incident_review_v1");
   assert.equal(smoke.failedCaseId, "44444444-4444-4444-8444-444444444444");
+  assert.equal(smoke.replayFailedCaseId, "44444444-4444-4444-8444-444444444444");
   assert.equal(smoke.replayRecoveredCaseId, "44444444-4444-4444-8444-444444444444");
   assert.ok(smoke.traceIds.includes("trace-demo-provider-timeout"));
 });

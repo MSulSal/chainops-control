@@ -224,6 +224,13 @@ export type ReleaseRecordSnapshot = {
       casePath: string | null;
       caseExportPath: string | null;
       traceId: string | null;
+      history: Array<{
+        attempt: number;
+        status: "recovered" | "failed_again";
+        at: string;
+        traceId: string;
+        summary: string;
+      }>;
     };
   };
   rollback: {
@@ -546,11 +553,13 @@ function buildReplayEvidence(
       replayAttempt: null,
       casePath: null,
       caseExportPath: null,
-      traceId: null
+      traceId: null,
+      history: []
     };
   }
 
   const replayStatus = getLatestReplayStatus(focusCaseDetail.auditEvents);
+  const replayHistory = buildReplayHistory(focusCaseDetail.auditEvents);
   const casePath = `/cases/${focusCaseDetail.caseRecord.id}`;
   const caseExportPath = `/exports/cases/${focusCaseDetail.caseRecord.id}`;
 
@@ -563,7 +572,8 @@ function buildReplayEvidence(
       replayAttempt: replayStatus.attemptNumber,
       casePath,
       caseExportPath,
-      traceId: focusCaseDetail.caseRecord.traceId
+      traceId: focusCaseDetail.caseRecord.traceId,
+      history: replayHistory
     };
   }
 
@@ -576,7 +586,8 @@ function buildReplayEvidence(
       replayAttempt: replayStatus.attemptNumber,
       casePath,
       caseExportPath,
-      traceId: focusCaseDetail.caseRecord.traceId
+      traceId: focusCaseDetail.caseRecord.traceId,
+      history: replayHistory
     };
   }
 
@@ -589,7 +600,8 @@ function buildReplayEvidence(
       replayAttempt: null,
       casePath,
       caseExportPath,
-      traceId: focusCaseDetail.caseRecord.traceId
+      traceId: focusCaseDetail.caseRecord.traceId,
+      history: replayHistory
     };
   }
 
@@ -599,8 +611,40 @@ function buildReplayEvidence(
     replayAttempt: null,
     casePath,
     caseExportPath,
-    traceId: focusCaseDetail.caseRecord.traceId
+    traceId: focusCaseDetail.caseRecord.traceId,
+    history: replayHistory
   };
+}
+
+function buildReplayHistory(auditEvents: AuditEvent[]): ReleaseRecordSnapshot["evidence"]["replay"]["history"] {
+  return auditEvents
+    .filter(
+      (event) =>
+        event.type === "FAILED_CASE_REPLAY_RECOVERED" || event.type === "FAILED_CASE_REPLAY_FAILED"
+    )
+    .map((event) => ({
+      attempt:
+        typeof event.details.replayAttempt === "number" && Number.isFinite(event.details.replayAttempt)
+          ? event.details.replayAttempt
+          : 1,
+      status: event.type === "FAILED_CASE_REPLAY_RECOVERED" ? ("recovered" as const) : ("failed_again" as const),
+      at: event.at,
+      traceId: event.traceId,
+      summary:
+        event.type === "FAILED_CASE_REPLAY_RECOVERED"
+          ? `Replay attempt ${
+              typeof event.details.replayAttempt === "number" && Number.isFinite(event.details.replayAttempt)
+                ? event.details.replayAttempt
+                : 1
+            } recovered the case through the same API path.`
+          : `Replay attempt ${
+              typeof event.details.replayAttempt === "number" && Number.isFinite(event.details.replayAttempt)
+                ? event.details.replayAttempt
+                : 1
+            } repeated the failure through the same API path${
+              event.details.errorCode ? ` with ${(event.details.errorCode as string)}.` : "."
+            }`
+    }));
 }
 
 export function buildOpenTelemetryExportSnapshot(input: {

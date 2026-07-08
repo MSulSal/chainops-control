@@ -391,6 +391,7 @@ export default async function ReviewerWorkspacePage({
                   <li>{releaseRecord.release.summary}</li>
                   <li>{`Reviewer workspace: ${releaseRecord.release.reviewerWorkspacePath}`}</li>
                   <li>{`Focus trace: ${releaseRecord.evidence.focusTraceId ?? "No focus trace in current filtered queue."}`}</li>
+                  <li>{`Replay status: ${releaseRecord.evidence.replay.status} (${releaseRecord.evidence.replay.history.length} recorded outcome${releaseRecord.evidence.replay.history.length === 1 ? "" : "s"})`}</li>
                   <li>{`Rollback decision: ${releaseRecord.rollback.decision}`}</li>
                   <li>{`Provider-backed host status: ${releaseRecordHostReadiness?.overall.statusLabel ?? "Unavailable"}`}</li>
                   <li>{`CI host-readiness capture: ${releaseRecordReviewArtifact?.captures?.hostReadiness.statusLabel ?? releaseRecordReviewArtifact?.captures?.hostReadiness.status ?? "Not recorded"}`}</li>
@@ -508,6 +509,28 @@ export default async function ReviewerWorkspacePage({
                   </div>
                 </>
               ) : null}
+            </div>
+          ) : null}
+          {releaseRecord?.evidence.replay.history.length ? (
+            <div className="detail-grid detail-grid-balanced">
+              <article className="metric-card">
+                <p className="eyebrow">Replay outcome comparison</p>
+                <ul className="response-list">
+                  {releaseRecord.evidence.replay.history.map((event) => (
+                    <li key={`${event.at}-${event.attempt}`}>
+                      {`Attempt ${event.attempt} ${event.status === "failed_again" ? "failed again" : "recovered"} at ${formatTimestamp(event.at)} via ${event.traceId}. ${event.summary}`}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+              <article className="metric-card">
+                <p className="eyebrow">Latest replay summary</p>
+                <ul className="response-list">
+                  <li>{releaseRecord.evidence.replay.summary}</li>
+                  <li>{`Case path: ${releaseRecord.evidence.replay.casePath ?? "Not recorded"}`}</li>
+                  <li>{`Case export: ${releaseRecord.evidence.replay.caseExportPath ?? "Not recorded"}`}</li>
+                </ul>
+              </article>
             </div>
           ) : null}
           {releaseRecord ? (

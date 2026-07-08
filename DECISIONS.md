@@ -108,3 +108,7 @@ The next recovery step reuses the original intake/provider boundary from the cas
 ## Replay-evidence release tradeoff
 
 The next release-evidence step reuses the existing seeded smoke path and release-record export instead of documenting replay behavior only in the case page. The smoke harness now executes the replay endpoint and the release record prioritizes replay-recovered or replay-failed focus cases when they exist, so rollback drills point to the strongest current recovery signal automatically. The tradeoff is that the release record now depends on case-detail evidence loading for richer replay context, but that keeps the exported artifact honest to the same persisted audit history the UI already uses.
+
+## Replay-history comparison tradeoff
+
+The next replay-evidence step keeps the comparison model on the existing release-record contract instead of adding a separate replay-history export or fixture-only note. The seeded fixture runtime now allows a deterministic replay failure only when the smoke harness uses the explicit `trace-demo-replay-failed-*` trace IDs, and the release record stores replay outcome history beside the latest replay summary. The tradeoff is that the deterministic failure hook is intentionally demo-scoped rather than a general operator control, but it keeps repeated-failure proof reviewable through the same HTTP boundary and UI surfaces the product already ships.
