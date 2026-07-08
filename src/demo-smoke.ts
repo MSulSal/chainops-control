@@ -7,6 +7,7 @@ import type {
   WorkspaceIncidentSnapshot
 } from "./incident-snapshot.ts";
 import { DEMO_SCENARIO_NAME } from "./demo-scenario.ts";
+import type { RuntimeParityFocusCaseReplay } from "./runtime-parity.ts";
 
 type DemoResetResponse = {
   scenario: string;
@@ -26,6 +27,7 @@ export async function runSeededDemoSmokeTest(
   replayFailedCaseId: string;
   replayRecoveredCaseId: string;
   traceIds: string[];
+  focusCaseReplay: RuntimeParityFocusCaseReplay;
 }> {
   const firstReset = await fetchImpl(`${baseUrl}/demo/reset`, { method: "POST" });
   assert.equal(firstReset.status, 200);
@@ -269,7 +271,17 @@ export async function runSeededDemoSmokeTest(
     failedCaseId,
     replayFailedCaseId: failedReplayBody.caseRecord.id,
     replayRecoveredCaseId: recoveredReplayBody.caseRecord.id,
-    traceIds
+    traceIds,
+    focusCaseReplay: {
+      caseId: failedCaseId,
+      casePath: replayReleaseRecordSnapshot.evidence.replay.casePath ?? `/cases/${failedCaseId}`,
+      caseExportPath: replayReleaseRecordSnapshot.evidence.replay.caseExportPath ?? `/exports/cases/${failedCaseId}`,
+      traceId: replayReleaseRecordSnapshot.evidence.replay.traceId,
+      status: replayReleaseRecordSnapshot.evidence.replay.status,
+      replayAttempt: replayReleaseRecordSnapshot.evidence.replay.replayAttempt,
+      summary: replayReleaseRecordSnapshot.evidence.replay.summary,
+      history: replayReleaseRecordSnapshot.evidence.replay.history
+    }
   };
 }
 

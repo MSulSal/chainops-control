@@ -767,6 +767,7 @@ test("summarizes CI host-readiness capture and expected artifact files", () => {
       "runtime-parity-latest.json",
       "latest-release-record.json",
       "host-readiness.json",
+      "focus-case-incident-snapshot.json",
       "ci-evidence-summary.json",
       "README.md"
     ],
@@ -781,6 +782,10 @@ test("summarizes CI host-readiness capture and expected artifact files", () => {
       hostReadiness: {
         status: "captured" as const,
         statusLabel: "Watch"
+      },
+      focusCaseSnapshot: {
+        status: "captured" as const,
+        replayStatus: "recovered" as const
       }
     },
     run: {
@@ -791,7 +796,7 @@ test("summarizes CI host-readiness capture and expected artifact files", () => {
   assert.match(getReviewArtifactCaptureSummary(reviewArtifact), /captured host-readiness successfully \(Watch\)/i);
   assert.equal(
     getReviewArtifactExpectedFiles(reviewArtifact),
-    "runtime-parity-latest.json, latest-release-record.json, host-readiness.json, ci-evidence-summary.json, README.md"
+    "runtime-parity-latest.json, latest-release-record.json, host-readiness.json, focus-case-incident-snapshot.json, ci-evidence-summary.json, README.md"
   );
   assert.match(
     getReviewArtifactCaptureSummary({

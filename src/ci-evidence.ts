@@ -34,6 +34,15 @@ export type RuntimeParityEvidenceSummary = {
     statusLabel?: HostReadinessSnapshot["overall"]["statusLabel"];
     error?: string;
   };
+  focusCaseSnapshot: {
+    status: "captured" | "unavailable" | "missing";
+    artifactPath?: string;
+    caseId?: string;
+    traceId?: string | null;
+    replayStatus?: "recovered" | "failed_again" | "not_attempted" | "not_applicable";
+    replayAttempt?: number | null;
+    error?: string;
+  };
   githubRun: {
     repository?: string;
     runId?: string;
@@ -54,6 +63,19 @@ export type CaptureRuntimeParityEvidenceOptions = {
   fetcher?: FetchLike;
   now?: Date;
   env?: NodeJS.ProcessEnv;
+};
+
+type ReleaseRecordArtifact = {
+  release?: { version?: string; channel?: string };
+  evidence?: {
+    focusCasePath?: string | null;
+    focusCaseExportPath?: string | null;
+    focusTraceId?: string | null;
+    replay?: {
+      status?: "recovered" | "failed_again" | "not_attempted" | "not_applicable";
+      replayAttempt?: number | null;
+    };
+  };
 };
 
 export async function captureRuntimeParityEvidence(
@@ -89,10 +111,14 @@ export async function captureRuntimeParityEvidence(
     hostReadiness: {
       status: "unavailable"
     },
+    focusCaseSnapshot: {
+      status: "missing"
+    },
     githubRun: buildGitHubRunMetadata(env, artifactName),
     notes
   };
   let runtimeParityResult: RuntimeParityResult | null = null;
+  let releaseRecord: ReleaseRecordArtifact | null = null;
 
   try {
     runtimeParityResult = JSON.parse(await readFile(runtimeParityPath, "utf8")) as RuntimeParityResult;
@@ -122,9 +148,7 @@ export async function captureRuntimeParityEvidence(
       throw new Error(`release record request failed: ${response.status} ${response.statusText}`);
     }
 
-    const releaseRecord = (await response.json()) as {
-      release?: { version?: string; channel?: string };
-    };
+    releaseRecord = (await response.json()) as ReleaseRecordArtifact;
     await writeFile(releaseRecordPath, JSON.stringify(releaseRecord, null, 2));
     summary.releaseRecord = {
       status: "captured",
@@ -139,6 +163,54 @@ export async function captureRuntimeParityEvidence(
       error: (error as Error).message
     };
     notes.push("The live release-record export was not reachable during capture; inspect the runtime-parity JSON for the last smoke result.");
+  }
+
+  const focusCaseSnapshotPath = path.join(outputDir, "focus-case-incident-snapshot.json");
+  summary.focusCaseSnapshot.artifactPath = focusCaseSnapshotPath;
+  const focusCaseExportPath = releaseRecord?.evidence?.focusCaseExportPath?.trim();
+
+  if (releaseRecord?.evidence?.focusCasePath) {
+    summary.focusCaseSnapshot.caseId = releaseRecord.evidence.focusCasePath.split("/").at(-1);
+  }
+  if (releaseRecord?.evidence?.focusTraceId !== undefined) {
+    summary.focusCaseSnapshot.traceId = releaseRecord.evidence.focusTraceId;
+  }
+  if (releaseRecord?.evidence?.replay?.status) {
+    summary.focusCaseSnapshot.replayStatus = releaseRecord.evidence.replay.status;
+  }
+  if (releaseRecord?.evidence?.replay?.replayAttempt !== undefined) {
+    summary.focusCaseSnapshot.replayAttempt = releaseRecord.evidence.replay.replayAttempt;
+  }
+
+  if (focusCaseExportPath) {
+    try {
+      const response = await fetcher(`${baseUrl}${focusCaseExportPath}`, {
+        headers: { accept: "application/json" }
+      });
+      if (!response.ok) {
+        throw new Error(`focus case snapshot request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const focusCaseSnapshot = await response.json();
+      await writeFile(focusCaseSnapshotPath, JSON.stringify(focusCaseSnapshot, null, 2));
+      summary.focusCaseSnapshot = {
+        ...summary.focusCaseSnapshot,
+        status: "captured"
+      };
+    } catch (error) {
+      summary.focusCaseSnapshot = {
+        ...summary.focusCaseSnapshot,
+        status: "unavailable",
+        error: (error as Error).message
+      };
+      notes.push("The live focus-case incident export was not reachable during capture; use the release record replay summary as the fallback.");
+    }
+  } else {
+    summary.focusCaseSnapshot = {
+      ...summary.focusCaseSnapshot,
+      status: "missing"
+    };
+    notes.push("The latest release record did not expose a focus-case incident export for remote replay review.");
   }
 
   const hostReadinessPath = path.join(outputDir, "host-readiness.json");
@@ -215,6 +287,17 @@ export function buildRuntimeParityEvidenceReadme(summary: RuntimeParityEvidenceS
     lines.push(`Host-readiness status: ${summary.hostReadiness.statusLabel}`);
   }
 
+  lines.push(`Focus-case snapshot capture: ${summary.focusCaseSnapshot.status}`);
+  if (summary.focusCaseSnapshot.caseId) {
+    lines.push(`Focus-case id: ${summary.focusCaseSnapshot.caseId}`);
+  }
+  if (summary.focusCaseSnapshot.replayStatus) {
+    lines.push(`Replay status: ${summary.focusCaseSnapshot.replayStatus}`);
+  }
+  if (summary.focusCaseSnapshot.replayAttempt != null) {
+    lines.push(`Replay attempt: ${summary.focusCaseSnapshot.replayAttempt}`);
+  }
+
   if (summary.githubRun.runUrl) {
     lines.push(`GitHub Actions run: ${summary.githubRun.runUrl}`);
   }
@@ -263,6 +346,10 @@ function buildRuntimeParityCiEvidence(
       hostReadiness: {
         status: summary.hostReadiness.status,
         statusLabel: summary.hostReadiness.statusLabel
+      },
+      focusCaseSnapshot: {
+        status: summary.focusCaseSnapshot.status,
+        replayStatus: summary.focusCaseSnapshot.replayStatus
       }
     },
     run: {

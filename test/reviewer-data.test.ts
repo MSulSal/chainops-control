@@ -97,6 +97,7 @@ test("fetches the latest release record with reviewer filters", async () => {
                 "runtime-parity-latest.json",
                 "latest-release-record.json",
                 "host-readiness.json",
+                "focus-case-incident-snapshot.json",
                 "ci-evidence-summary.json",
                 "README.md"
               ],
@@ -111,6 +112,10 @@ test("fetches the latest release record with reviewer filters", async () => {
                 hostReadiness: {
                   status: "captured",
                   statusLabel: "Blocked"
+                },
+                focusCaseSnapshot: {
+                  status: "captured",
+                  replayStatus: "failed_again"
                 }
               },
               run: {

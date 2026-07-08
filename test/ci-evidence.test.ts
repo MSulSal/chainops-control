@@ -53,7 +53,34 @@ test("captures runtime parity and release evidence into a reviewable artifact bu
             release: {
               version: "0.1.0",
               channel: "local_container_runtime"
+            },
+            evidence: {
+              focusCasePath: "/cases/case-replay-1",
+              focusCaseExportPath: "/exports/cases/case-replay-1",
+              focusTraceId: "trace-demo-replay-recovered-2",
+              replay: {
+                status: "recovered",
+                replayAttempt: 2
+              }
             }
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" }
+          }
+        );
+      }
+
+      if (url.endsWith("/exports/cases/case-replay-1")) {
+        return new Response(
+          JSON.stringify({
+            scope: "case",
+            caseRecord: {
+              id: "case-replay-1",
+              traceId: "trace-demo-replay-recovered-2",
+              status: "pending_review"
+            },
+            auditEvents: []
           }),
           {
             status: 200,
@@ -103,8 +130,14 @@ test("captures runtime parity and release evidence into a reviewable artifact bu
   assert.equal(summary.releaseRecord.version, "0.1.0");
   assert.equal(summary.hostReadiness.status, "captured");
   assert.equal(summary.hostReadiness.statusLabel, "Watch");
+  assert.equal(summary.focusCaseSnapshot.status, "captured");
+  assert.equal(summary.focusCaseSnapshot.caseId, "case-replay-1");
+  assert.equal(summary.focusCaseSnapshot.replayStatus, "recovered");
+  assert.equal(summary.focusCaseSnapshot.replayAttempt, 2);
   assert.equal(summary.runtimeParity.result?.ciEvidence?.captures?.hostReadiness.status, "captured");
   assert.equal(summary.runtimeParity.result?.ciEvidence?.captures?.hostReadiness.statusLabel, "Watch");
+  assert.equal(summary.runtimeParity.result?.ciEvidence?.captures?.focusCaseSnapshot.status, "captured");
+  assert.equal(summary.runtimeParity.result?.ciEvidence?.captures?.focusCaseSnapshot.replayStatus, "recovered");
   assert.equal(
     summary.githubRun.runUrl,
     "https://github.com/MSulSal/chainops-control/actions/runs/123456789"
@@ -113,6 +146,8 @@ test("captures runtime parity and release evidence into a reviewable artifact bu
   const readme = await readFile(path.join(outputDir, "README.md"), "utf8");
   assert.match(readme, /Runtime parity status: failed/);
   assert.match(readme, /Host-readiness status: Watch/);
+  assert.match(readme, /Focus-case snapshot capture: captured/);
+  assert.match(readme, /Replay status: recovered/);
 
   const runtimeParityArtifact = JSON.parse(await readFile(path.join(outputDir, "runtime-parity-latest.json"), "utf8"));
   assert.equal(runtimeParityArtifact.error, "404 Not Found");
@@ -123,6 +158,9 @@ test("captures runtime parity and release evidence into a reviewable artifact bu
 
   const hostReadinessArtifact = JSON.parse(await readFile(path.join(outputDir, "host-readiness.json"), "utf8"));
   assert.equal(hostReadinessArtifact.overall.statusLabel, "Watch");
+
+  const focusCaseArtifact = JSON.parse(await readFile(path.join(outputDir, "focus-case-incident-snapshot.json"), "utf8"));
+  assert.equal(focusCaseArtifact.caseRecord.id, "case-replay-1");
 });
 
 test("keeps the artifact bundle reviewable when the live release record is unavailable", async () => {
@@ -158,7 +196,9 @@ test("keeps the artifact bundle reviewable when the live release record is unava
   assert.equal(summary.runtimeParity.status, "captured");
   assert.equal(summary.releaseRecord.status, "unavailable");
   assert.equal(summary.hostReadiness.status, "unavailable");
+  assert.equal(summary.focusCaseSnapshot.status, "missing");
   assert.equal(summary.runtimeParity.result?.ciEvidence?.captures?.hostReadiness.status, "unavailable");
+  assert.equal(summary.runtimeParity.result?.ciEvidence?.captures?.focusCaseSnapshot.status, "missing");
   assert.match(summary.releaseRecord.error ?? "", /404 Not Found/);
   assert.match(summary.hostReadiness.error ?? "", /404 Not Found/);
 

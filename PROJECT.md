@@ -46,6 +46,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 28: added a reviewer-triggered failed-ingestion replay action on case detail that reuses the original idempotency key, updates the original case instead of duplicating state, and persists replay request plus recovery-vs-repeat audit evidence.
 - Slice 29: exercised that replay path through the seeded smoke and release-evidence flow, added replay-aware release-record fields, and kept the replay story anchored to one exported focus case through the live HTTP boundary.
 - Slice 30: extended the seeded replay path to force one deterministic repeated failure before recovery, then surfaced replay outcome history in the release record and both reviewer release-evidence views so operators can compare failed-again versus recovered attempts without leaving the product.
+- Slice 31: threaded that replay summary into the persisted runtime-parity artifact and GitHub Actions evidence bundle, then captured the matching focus-case incident snapshot so remote reviewers can inspect the same failed-again versus recovered story without opening the live app.
 
 ## Success evidence
 

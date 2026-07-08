@@ -112,3 +112,7 @@ The next release-evidence step reuses the existing seeded smoke path and release
 ## Replay-history comparison tradeoff
 
 The next replay-evidence step keeps the comparison model on the existing release-record contract instead of adding a separate replay-history export or fixture-only note. The seeded fixture runtime now allows a deterministic replay failure only when the smoke harness uses the explicit `trace-demo-replay-failed-*` trace IDs, and the release record stores replay outcome history beside the latest replay summary. The tradeoff is that the deterministic failure hook is intentionally demo-scoped rather than a general operator control, but it keeps repeated-failure proof reviewable through the same HTTP boundary and UI surfaces the product already ships.
+
+## Replay-aware CI evidence tradeoff
+
+The next remote-review step reuses the persisted runtime-parity artifact plus the existing focus-case export instead of creating a replay-only bundle or a second release-summary endpoint. The runtime smoke path now records the replay summary on the parity artifact, and CI evidence capture downloads the matching focus-case incident snapshot into the same artifact folder as parity, release-record, and host-readiness evidence. That keeps remote review attached to one downloadable package and one seeded focus case, while preserving the honest boundary that this is still local runtime evidence rather than hosted monitoring or a separate evidence service.

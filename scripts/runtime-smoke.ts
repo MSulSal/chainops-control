@@ -75,6 +75,7 @@ async function main() {
       scenario: result.scenario,
       failedCaseId: result.failedCaseId,
       traceIds: result.traceIds,
+      focusCaseReplay: result.focusCaseReplay,
       ciEvidence
     });
     console.log(
@@ -93,6 +94,7 @@ async function main() {
         status: "not_checked",
         detail: "The seeded runtime flow did not reach this export check before failing."
       })),
+      focusCaseReplay: undefined,
       error: (error as Error).message,
       ciEvidence
     });
@@ -124,6 +126,9 @@ function buildCiEvidence(env: NodeJS.ProcessEnv = process.env): RuntimeParityCiE
       },
       hostReadiness: {
         status: "unavailable"
+      },
+      focusCaseSnapshot: {
+        status: "missing"
       }
     },
     run: {

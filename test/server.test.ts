@@ -857,11 +857,12 @@ test("exports a latest release record artifact from the current filtered queue",
           "runtime-parity-latest.json",
           "latest-release-record.json",
           "host-readiness.json",
+          "focus-case-incident-snapshot.json",
           "ci-evidence-summary.json",
           "README.md"
         ],
         reviewHint:
-          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, host-readiness JSON, and capture summary without rerunning the live smoke path.",
+          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, focus-case incident snapshot, host-readiness JSON, and capture summary without rerunning the live smoke path.",
         captures: {
           runtimeParity: {
             status: "captured"
@@ -872,6 +873,10 @@ test("exports a latest release record artifact from the current filtered queue",
           hostReadiness: {
             status: "captured",
             statusLabel: "Blocked"
+          },
+          focusCaseSnapshot: {
+            status: "captured",
+            replayStatus: "not_attempted"
           }
         },
         run: {
@@ -962,11 +967,12 @@ test("returns the latest persisted runtime parity result when available", async 
           "runtime-parity-latest.json",
           "latest-release-record.json",
           "host-readiness.json",
+          "focus-case-incident-snapshot.json",
           "ci-evidence-summary.json",
           "README.md"
         ],
         reviewHint:
-          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, host-readiness JSON, and capture summary without rerunning the live smoke path.",
+          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, focus-case incident snapshot, host-readiness JSON, and capture summary without rerunning the live smoke path.",
         captures: {
           runtimeParity: {
             status: "captured"
@@ -977,6 +983,9 @@ test("returns the latest persisted runtime parity result when available", async 
           hostReadiness: {
             status: "captured",
             statusLabel: "Ready"
+          },
+          focusCaseSnapshot: {
+            status: "missing"
           }
         },
         run: {

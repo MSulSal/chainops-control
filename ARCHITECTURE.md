@@ -150,6 +150,10 @@ The next proof step still stays on the same seeded runtime boundary instead of i
 
 The next replay-evidence step still stays on that same release-record contract instead of creating a separate replay-history export or widening the operator API. The deterministic fixture provider now forces a timeout only for seeded smoke traces matching `trace-demo-replay-failed-*`, which lets the smoke path prove one repeated-failure replay before a later recovery on the same case. The release record and both reviewer release panels now carry replay outcome history beside the latest replay summary, so reviewers can compare failed-again versus recovered attempts without leaving the existing API-backed evidence flow.
 
+## 2026-07-08 replay-aware CI evidence decision
+
+The next remote-review step still stays on the persisted runtime-parity and existing case-export contract instead of inventing a replay-only artifact shape. The runtime smoke script now records the release-record replay summary directly on the parity artifact, and `npm run capture:ci-evidence` downloads the matching focus-case incident snapshot into the same GitHub Actions bundle as parity, release-record, and host-readiness evidence. That keeps remote replay review attached to one seeded focus case and one downloadable artifact path, while avoiding a second summary endpoint, CI-only fixture prose, or a broader evidence store.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

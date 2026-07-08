@@ -8,12 +8,13 @@ export const RUNTIME_PARITY_ARTIFACT_FILES = [
   "runtime-parity-latest.json",
   "latest-release-record.json",
   "host-readiness.json",
+  "focus-case-incident-snapshot.json",
   "ci-evidence-summary.json",
   "README.md"
 ] as const;
 
 export const RUNTIME_PARITY_ARTIFACT_REVIEW_HINT =
-  "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, host-readiness JSON, and capture summary without rerunning the live smoke path.";
+  "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw parity JSON, release record JSON, focus-case incident snapshot, host-readiness JSON, and capture summary without rerunning the live smoke path.";
 
 export type RuntimeParityExportCheck = {
   path: string;
@@ -37,6 +38,10 @@ export type RuntimeParityCiEvidence = {
       status: Extract<RuntimeParityEvidenceCaptureStatus, "captured" | "unavailable">;
       statusLabel?: string;
     };
+    focusCaseSnapshot: {
+      status: Extract<RuntimeParityEvidenceCaptureStatus, "captured" | "unavailable" | "missing">;
+      replayStatus?: RuntimeParityFocusCaseReplay["status"];
+    };
   };
   run: {
     repository?: string;
@@ -47,6 +52,23 @@ export type RuntimeParityCiEvidence = {
     serverUrl?: string;
     runUrl?: string;
   };
+};
+
+export type RuntimeParityFocusCaseReplay = {
+  caseId: string;
+  casePath: string;
+  caseExportPath: string;
+  traceId: string | null;
+  status: "recovered" | "failed_again" | "not_attempted" | "not_applicable";
+  replayAttempt: number | null;
+  summary: string;
+  history: Array<{
+    attempt: number;
+    status: "recovered" | "failed_again";
+    at: string;
+    traceId: string;
+    summary: string;
+  }>;
 };
 
 export type RuntimeParityResult = {
@@ -60,6 +82,7 @@ export type RuntimeParityResult = {
   scenario?: string;
   failedCaseId?: string;
   traceIds?: string[];
+  focusCaseReplay?: RuntimeParityFocusCaseReplay;
   error?: string;
   ciEvidence?: RuntimeParityCiEvidence;
 };

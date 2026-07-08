@@ -34,6 +34,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 29: seeded smoke became more defensible once it actually exercised the replay endpoint and then checked the release record for the recovered-vs-repeat story, because that proves the exported release evidence is describing a real workflow path instead of static seeded prose.
 - Applied in slice 30: a demo-scoped deterministic replay failure hook is safer than a general-purpose operator override, because smoke can prove the repeated-failure branch without pretending the product has a hidden admin control for live cases.
 - Applied in slice 30: replay evidence becomes easier to explain when the release record keeps attempt history instead of only the latest replay verdict, because the operator can compare "failed again" versus "recovered later" from one exported artifact and one UI view.
+- Applied in slice 31: remote replay review became more useful once the runtime-parity artifact itself carried the focus-case replay summary, because the CI bundle can now describe the latest replay outcome without making the reviewer reconstruct it from logs.
+- Applied in slice 31: capturing the focus-case incident snapshot into the same CI bundle is cleaner than inventing a replay-only export, because the downloaded artifact now contains the full case and audit trail behind the failed-again versus recovered comparison.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -109,6 +111,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 27: CI evidence becomes easier to triage when the persisted parity artifact records whether host-readiness capture itself succeeded, because the workspace can distinguish "host blocked" from "bundle never captured the host snapshot" without reading workflow logs first.
 - Applied in slice 29: runtime-proof coverage is stronger when the live smoke path replays the seeded failed case and the release record exports that same replay result, because operators can talk through retry safety, release evidence, and rollback drills from one trace-backed artifact path.
 - Applied in slice 30: release review is stronger when the same artifact shows both the failed replay and the later recovery, because it turns "retry safety exists" into a more defensible operational narrative about failure, comparison, and validation.
+- Applied in slice 31: CI artifact bundles are easier to audit when they include the exact focus-case incident snapshot referenced by the release record, because remote reviewers can inspect the replay audit trail directly instead of trusting a summary alone.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
