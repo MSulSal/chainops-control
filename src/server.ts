@@ -83,6 +83,9 @@ export function createApp(
 
       if (request.method === "GET" && url.pathname === "/exports/releases/latest") {
         const cases = await store.listCases(readCaseListFilters(url.searchParams));
+        const caseDetails = (
+          await Promise.all(cases.cases.map(async (caseItem) => await store.findCase(caseItem.id)))
+        ).filter((detail): detail is NonNullable<typeof detail> => detail !== null);
         const lastHostReadinessSnapshot = options.loadHostReadinessSnapshot
           ? await options.loadHostReadinessSnapshot()
           : await collectHostReadinessSnapshot();
@@ -90,7 +93,7 @@ export function createApp(
         return sendJson(
           response,
           200,
-          buildReleaseRecordSnapshot({ ...cases, lastHostReadinessSnapshot, lastRuntimeParityResult }),
+          buildReleaseRecordSnapshot({ ...cases, caseDetails, lastHostReadinessSnapshot, lastRuntimeParityResult }),
           {
             "content-disposition": 'attachment; filename="latest-release-record.json"'
           }

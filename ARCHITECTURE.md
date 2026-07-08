@@ -142,6 +142,10 @@ The next reviewability step still stays on that same persisted parity contract i
 
 The next workflow step still stays on the same intake and audit boundary instead of introducing a second repair contract. The case-detail page now triggers `POST /cases/:id/replay`, the service reuses the original stored idempotency key internally, and PostgreSQL records explicit replay-request plus replay-recovered or replay-failed audit events around the same provider fetch path. That keeps retry safety, duplicate prevention, and incident evidence attached to one case history while avoiding a browser-managed idempotency key, a second payload shape, or a hidden background retry loop.
 
+## 2026-07-08 replay-evidence smoke decision
+
+The next proof step still stays on the same seeded runtime boundary instead of inventing fixture-only replay notes. The seeded smoke harness now replays the demo failed-ingestion case through `POST /cases/:id/replay`, verifies the refreshed case export, and checks that the latest release record surfaces the recovered-vs-repeat replay story on the same focus case. That keeps release evidence attached to a real live-HTTP recovery path while avoiding a second replay summary endpoint, manual release annotations, or synthetic CI-only evidence.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

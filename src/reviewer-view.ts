@@ -55,6 +55,11 @@ export type CaseReleaseRecordSummary = {
   focusCaseExportPath: string | null;
 };
 
+export type ReplayStatus = {
+  event: AuditEvent;
+  attemptNumber: number;
+};
+
 export function getStatusCopy(status: CaseStatus): StatusCopy {
   switch (status) {
     case "approved":
@@ -671,9 +676,7 @@ function getReviewerDecisionDetail(event: AuditEvent): string {
   return note;
 }
 
-function getLatestReplayStatus(
-  auditEvents: AuditEvent[]
-): { event: AuditEvent; attemptNumber: number } | null {
+export function getLatestReplayStatus(auditEvents: AuditEvent[]): ReplayStatus | null {
   const event = [...auditEvents]
     .reverse()
     .find(

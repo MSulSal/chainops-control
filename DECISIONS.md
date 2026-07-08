@@ -104,3 +104,7 @@ The next reviewability step stores host-readiness capture status on the same per
 ## Failed-ingestion replay tradeoff
 
 The next recovery step reuses the original intake/provider boundary from the case-detail page instead of inventing a second repair API with its own payload or persistence rules. The service owns the stored idempotency key, updates the original failed case in place, and writes explicit replay-request plus recovery-vs-repeat audit events so the retry path stays explainable from the same SQL-backed history. The tradeoff is that replay remains intentionally bounded to cases that already captured an idempotency key; the product still does not claim autonomous repair loops or background retries.
+
+## Replay-evidence release tradeoff
+
+The next release-evidence step reuses the existing seeded smoke path and release-record export instead of documenting replay behavior only in the case page. The smoke harness now executes the replay endpoint and the release record prioritizes replay-recovered or replay-failed focus cases when they exist, so rollback drills point to the strongest current recovery signal automatically. The tradeoff is that the release record now depends on case-detail evidence loading for richer replay context, but that keeps the exported artifact honest to the same persisted audit history the UI already uses.

@@ -11,6 +11,7 @@ import type {
 import {
   getCaseDetailCallout,
   getCaseOperationalGuide,
+  getLatestReplayStatus,
   getCaseStageTrace,
   getCaseListSubtitle,
   getProviderSummary,
@@ -190,6 +191,10 @@ export type ReleaseRecordSnapshot = {
       name: string;
       expectedTraceIds: string[];
     };
+    seededReplay: {
+      actionPathTemplate: "/cases/:id/replay";
+      expectedOutcome: string;
+    };
     hostReadiness: {
       artifactPath: string;
       failureMode: string;
@@ -212,6 +217,14 @@ export type ReleaseRecordSnapshot = {
     focusCasePath: string | null;
     focusCaseExportPath: string | null;
     focusTraceId: string | null;
+    replay: {
+      status: "recovered" | "failed_again" | "not_attempted" | "not_applicable";
+      summary: string;
+      replayAttempt: number | null;
+      casePath: string | null;
+      caseExportPath: string | null;
+      traceId: string | null;
+    };
   };
   rollback: {
     decision: string;
@@ -372,14 +385,31 @@ export function buildReleaseRecordSnapshot(input: {
   summary: CaseQueueSummary;
   analytics: CaseQueueAnalytics;
   cases: CaseSummary[];
+  caseDetails?: Array<{
+    caseRecord: CaseRecord;
+    auditEvents: AuditEvent[];
+  }>;
   lastHostReadinessSnapshot?: HostReadinessSnapshot | null;
   lastRuntimeParityResult?: RuntimeParityResult | null;
 }): ReleaseRecordSnapshot {
   const releaseGuide = getWorkspaceOperationalGuide(input.summary, input.analytics);
+  const focusCaseDetail =
+    input.caseDetails?.find(
+      (detail) => getLatestReplayStatus(detail.auditEvents)?.event.type === "FAILED_CASE_REPLAY_RECOVERED"
+    ) ??
+    input.caseDetails?.find(
+      (detail) => getLatestReplayStatus(detail.auditEvents)?.event.type === "FAILED_CASE_REPLAY_FAILED"
+    ) ??
+    input.caseDetails?.find((detail) => detail.caseRecord.status === "ingestion_failed") ??
+    input.caseDetails?.find((detail) => detail.caseRecord.status === "pending_review") ??
+    input.caseDetails?.[0] ??
+    null;
   const focusCase =
+    focusCaseDetail?.caseRecord ??
     input.cases.find((caseItem) => caseItem.status === "ingestion_failed") ??
     input.cases.find((caseItem) => caseItem.status === "pending_review") ??
     input.cases[0];
+  const replayEvidence = buildReplayEvidence(focusCaseDetail);
 
   return {
     generatedAt: input.generatedAt ?? new Date().toISOString(),
@@ -437,6 +467,11 @@ export function buildReleaseRecordSnapshot(input: {
           "trace-demo-approved-low"
         ]
       },
+      seededReplay: {
+        actionPathTemplate: "/cases/:id/replay",
+        expectedOutcome:
+          "Replay the seeded failed-ingestion case through the live HTTP boundary and confirm the original case recovers or records a repeated failure without duplicating state."
+      },
       hostReadiness: {
         artifactPath: "/exports/host-readiness",
         failureMode:
@@ -471,7 +506,8 @@ export function buildReleaseRecordSnapshot(input: {
       workspaceSnapshotPath: "/exports/workspace",
       focusCasePath: focusCase ? `/cases/${focusCase.id}` : null,
       focusCaseExportPath: focusCase ? `/exports/cases/${focusCase.id}` : null,
-      focusTraceId: focusCase?.traceId ?? null
+      focusTraceId: focusCase?.traceId ?? null,
+      replay: replayEvidence
     },
     rollback: {
       decision: releaseGuide.rollbackDecision,
@@ -492,6 +528,78 @@ export function buildReleaseRecordSnapshot(input: {
       "No external collector, trace backend, or alerting service is provisioned by this artifact.",
       "Release and rollback guidance remain operator-facing recommendations derived from persisted case and audit evidence."
     ]
+  };
+}
+
+function buildReplayEvidence(
+  focusCaseDetail:
+    | {
+        caseRecord: CaseRecord;
+        auditEvents: AuditEvent[];
+      }
+    | null
+): ReleaseRecordSnapshot["evidence"]["replay"] {
+  if (!focusCaseDetail) {
+    return {
+      status: "not_applicable",
+      summary: "No focus case is available for replay evidence in the current filtered queue.",
+      replayAttempt: null,
+      casePath: null,
+      caseExportPath: null,
+      traceId: null
+    };
+  }
+
+  const replayStatus = getLatestReplayStatus(focusCaseDetail.auditEvents);
+  const casePath = `/cases/${focusCaseDetail.caseRecord.id}`;
+  const caseExportPath = `/exports/cases/${focusCaseDetail.caseRecord.id}`;
+
+  if (replayStatus?.event.type === "FAILED_CASE_REPLAY_RECOVERED") {
+    return {
+      status: "recovered",
+      summary:
+        getCaseDetailCallout(focusCaseDetail.caseRecord, focusCaseDetail.auditEvents) ??
+        `Replay attempt ${replayStatus.attemptNumber} recovered the focus case through the same API path.`,
+      replayAttempt: replayStatus.attemptNumber,
+      casePath,
+      caseExportPath,
+      traceId: focusCaseDetail.caseRecord.traceId
+    };
+  }
+
+  if (replayStatus?.event.type === "FAILED_CASE_REPLAY_FAILED") {
+    return {
+      status: "failed_again",
+      summary:
+        getCaseDetailCallout(focusCaseDetail.caseRecord, focusCaseDetail.auditEvents) ??
+        `Replay attempt ${replayStatus.attemptNumber} repeated the failure through the same API path.`,
+      replayAttempt: replayStatus.attemptNumber,
+      casePath,
+      caseExportPath,
+      traceId: focusCaseDetail.caseRecord.traceId
+    };
+  }
+
+  if (focusCaseDetail.caseRecord.status === "ingestion_failed") {
+    return {
+      status: "not_attempted",
+      summary:
+        getCaseDetailCallout(focusCaseDetail.caseRecord, focusCaseDetail.auditEvents) ??
+        "The focus case is still failed and has not recorded a reviewer-triggered replay attempt yet.",
+      replayAttempt: null,
+      casePath,
+      caseExportPath,
+      traceId: focusCaseDetail.caseRecord.traceId
+    };
+  }
+
+  return {
+    status: "not_applicable",
+    summary: "The current release focus case has no replay evidence attached.",
+    replayAttempt: null,
+    casePath,
+    caseExportPath,
+    traceId: focusCaseDetail.caseRecord.traceId
   };
 }
 

@@ -31,6 +31,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 27: rendering the expected bundle files and host-readiness capture result from the same release-record contract keeps the reviewer workspace aligned with the downloaded CI artifact and makes release-review gaps easier to explain.
 - Applied in slice 28: the cleanest way to add failed-ingestion replay without inventing a second recovery workflow was to trigger the same intake/provider boundary from case detail, then persist replay request plus outcome evidence in the existing audit log.
 - Applied in slice 28: case-detail callouts become more useful when they distinguish "recovered on replay" from "failed again on replay," because the reviewer can explain both retry safety and current operational state from one page refresh.
+- Applied in slice 29: seeded smoke became more defensible once it actually exercised the replay endpoint and then checked the release record for the recovered-vs-repeat story, because that proves the exported release evidence is describing a real workflow path instead of static seeded prose.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -50,6 +51,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 19: release evidence stays explainable when the smoke script writes a structured artifact with checked export paths, ignored fields, and the exact failure summary instead of leaving parity results trapped in console output.
 - Applied in slice 20: CI evidence stays reviewable when the workflow uploads the raw parity artifact, a capture summary, and any reachable release record as one bundle before the compose stack is torn down.
 - Applied in slice 28: replay-safe recovery is easier to defend when the service, not the browser, owns the stored idempotency key and writes explicit replay-request plus replay-outcome audit events around the same provider fetch boundary.
+- Applied in slice 29: release evidence became easier to explain once the release record chose replay-recovered or replay-failed cases ahead of generic pending cases, because the rollback drill can now point to the strongest current recovery signal automatically.
 - Docs: https://nodejs.org/docs/latest/api/ | https://www.typescriptlang.org/docs/
 
 ## PostgreSQL and SQL
@@ -102,6 +104,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 25: release evidence stays easier to debug when runtime-parity status and host-readiness blockers travel in the same exported artifact, because an operator can explain both "what the runtime did" and "why the next sandbox attempt is still paused" without leaving the existing API boundary.
 - Applied in slice 26: CI evidence stays easier to hand off when the raw host-readiness snapshot ships beside the runtime-parity and release-record JSON, because a reviewer can compare stale-runtime evidence with Docker/Terraform/provider blockers from the same downloadable bundle.
 - Applied in slice 27: CI evidence becomes easier to triage when the persisted parity artifact records whether host-readiness capture itself succeeded, because the workspace can distinguish "host blocked" from "bundle never captured the host snapshot" without reading workflow logs first.
+- Applied in slice 29: runtime-proof coverage is stronger when the live smoke path replays the seeded failed case and the release record exports that same replay result, because operators can talk through retry safety, release evidence, and rollback drills from one trace-backed artifact path.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks
