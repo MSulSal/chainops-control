@@ -1030,10 +1030,63 @@ test("returns the latest persisted runtime parity result when available", async 
 
 test("exports a case incident snapshot with trace-backed guide and audit evidence", async (t) => {
   const store = await createTestStore();
-  const app = createApp(store);
+  const runtimeParityDir = await mkdtemp(path.join(os.tmpdir(), "chainops-runtime-parity-"));
+  process.env.CHAINOPS_RUNTIME_PARITY_PATH = path.join(runtimeParityDir, "latest.json");
+  await writeFile(
+    process.env.CHAINOPS_RUNTIME_PARITY_PATH,
+    JSON.stringify({
+      checkedAt: "2026-07-09T18:00:00.000Z",
+      baseUrl: "http://127.0.0.1:4317",
+      status: "failed",
+      summary: "The running service failed the seeded runtime parity gate and should be treated as stale.",
+      comparedExports: ["/exports/releases/latest"],
+      ignoredFields: ["generatedAt"],
+      exportChecks: [],
+      ciEvidence: {
+        provider: "github_actions",
+        artifactName: "runtime-parity-evidence",
+        artifactFiles: [
+          "runtime-parity-latest.json",
+          "latest-release-record.json",
+          "host-readiness.json",
+          "focus-case-incident-snapshot.json",
+          "ci-evidence-summary.json",
+          "README.md"
+        ],
+        reviewHint:
+          "Download the runtime-parity-evidence artifact from this GitHub Actions run to inspect the raw runtime-parity JSON, release record JSON, focus-case incident snapshot, host-readiness JSON, and capture summary without rerunning the live smoke path.",
+        run: {}
+      }
+    })
+  );
+  const app = createApp(store, {
+    loadHostReadinessSnapshot: async () => ({
+      generatedAt: "2026-07-09T18:01:00.000Z",
+      scope: "host_readiness",
+      overall: {
+        statusLabel: "Blocked",
+        summary: "Terraform CLI is unavailable on this host."
+      },
+      runtime: {
+        dockerComposeFile: "docker-compose.yml",
+        terraformSandboxPath: "infra/terraform/sandbox",
+        reviewerWorkspacePath: "/",
+        apiBaseUrl: "http://127.0.0.1:4317"
+      },
+      checks: [],
+      providerSandbox: {
+        status: "blocked",
+        summary: "The first provider-backed sandbox attempt should stay paused on this host.",
+        missingRequirements: ["Terraform CLI is unavailable on this host."],
+        nextSteps: ["Install Terraform and rerun host readiness."]
+      },
+      boundaries: ["Local host readiness only."]
+    })
+  });
 
   await new Promise<void>((resolve) => app.listen(0, resolve));
   t.after(async () => {
+    delete process.env.CHAINOPS_RUNTIME_PARITY_PATH;
     await new Promise<void>((resolve, reject) => app.close((error) => (error ? reject(error) : resolve())));
     await store.close();
   });
@@ -1063,6 +1116,10 @@ test("exports a case incident snapshot with trace-backed guide and audit evidenc
   assert.equal(snapshot.scope, "case");
   assert.equal(snapshot.caseRecord.id, created.caseRecord.id);
   assert.equal(snapshot.incidentGuide.statusLabel, "Watch");
+  assert.equal(snapshot.releaseHandoff.releaseRecordPath, "/exports/releases/latest");
+  assert.equal(snapshot.releaseHandoff.focusCase.isCurrentFocusCase, true);
+  assert.equal(snapshot.releaseHandoff.runtimeParity.status, "failed");
+  assert.equal(snapshot.releaseHandoff.hostReadiness.statusLabel, "Blocked");
   assert.equal(Array.isArray(snapshot.auditEvents), true);
   assert.equal(snapshot.stageTrace.length, 3);
 });

@@ -161,7 +161,22 @@ export function createApp(
           return sendJson(response, 404, { error: "case not found", traceId });
         }
 
-        return sendJson(response, 200, buildCaseIncidentSnapshot(found), {
+        const cases = await store.listCases({});
+        const caseDetails = (
+          await Promise.all(cases.cases.map(async (caseItem) => await store.findCase(caseItem.id)))
+        ).filter((detail): detail is NonNullable<typeof detail> => detail !== null);
+        const lastHostReadinessSnapshot = options.loadHostReadinessSnapshot
+          ? await options.loadHostReadinessSnapshot()
+          : await collectHostReadinessSnapshot();
+        const lastRuntimeParityResult = await readLatestRuntimeParityResult();
+        const releaseRecord = buildReleaseRecordSnapshot({
+          ...cases,
+          caseDetails,
+          lastHostReadinessSnapshot,
+          lastRuntimeParityResult
+        });
+
+        return sendJson(response, 200, buildCaseIncidentSnapshot({ ...found, releaseRecord }), {
           "content-disposition": `attachment; filename="case-${caseExportMatch[1]}-incident-snapshot.json"`
         });
       }

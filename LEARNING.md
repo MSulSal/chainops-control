@@ -38,6 +38,8 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 31: capturing the focus-case incident snapshot into the same CI bundle is cleaner than inventing a replay-only export, because the downloaded artifact now contains the full case and audit trail behind the failed-again versus recovered comparison.
 - Applied in slice 32: remote review gets easier once the release record exposes replay-artifact capture status directly, because operators can tell whether CI actually bundled the focus-case snapshot before downloading JSON or opening workflow logs.
 - Applied in slice 32: naming `focus-case-incident-snapshot.json` explicitly in the UI is better than a generic "artifact available" message, because it teaches the reviewer exactly which file carries the replay audit trail inside the bundle.
+- Applied in slice 33: a case export becomes a stronger remote-review artifact when it embeds the release handoff summary from the latest release record instead of forcing the reviewer to cross-reference multiple JSON files for parity verdict, replay history, and host blockers.
+- Applied in slice 33: the cleanest way to explain a CI bundle is to teach the README what the focus-case snapshot already contains, rather than inventing a second summary file that can drift from the exported case evidence.
 - Docs: https://nextjs.org/docs | https://react.dev/learn | https://www.typescriptlang.org/docs/
 
 ## Node.js and TypeScript service
@@ -115,6 +117,7 @@ Use this as the implementation checklist for the product. Keep notes tied to shi
 - Applied in slice 30: release review is stronger when the same artifact shows both the failed replay and the later recovery, because it turns "retry safety exists" into a more defensible operational narrative about failure, comparison, and validation.
 - Applied in slice 31: CI artifact bundles are easier to audit when they include the exact focus-case incident snapshot referenced by the release record, because remote reviewers can inspect the replay audit trail directly instead of trusting a summary alone.
 - Applied in slice 32: CI bundle hints are more actionable when they mention the exact replay-evidence file name and capture result, because "captured", "missing", and "unavailable" answer different troubleshooting questions during release review.
+- Applied in slice 33: release evidence gets easier to hand off when the focus-case snapshot itself repeats the latest parity verdict and host-readiness blockers, because one downloaded JSON can now explain both runtime drift and replay context during incident review.
 - Docs: https://opentelemetry.io/docs/languages/ | https://docs.github.com/actions
 
 ## Design checks

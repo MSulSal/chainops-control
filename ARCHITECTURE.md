@@ -158,6 +158,10 @@ The next remote-review step still stays on the persisted runtime-parity and exis
 
 The next release-evidence step still stays on that same release-record and parity-artifact contract instead of adding a separate CI bundle inspector. `GET /exports/releases/latest` now surfaces a structured focus-case replay-artifact summary, and the reviewer workspace plus case-detail release panel render that same status and the explicit `focus-case-incident-snapshot.json` hint before download. That keeps remote reviewers on one artifact path while making it obvious whether the latest CI bundle actually carries the replay audit trail they expect.
 
+## 2026-07-09 case-export release-handoff decision
+
+The next remote-review step still stays on the existing case-export and release-record contract instead of inventing a second CI-only handoff artifact. `GET /exports/cases/:id` now embeds a bounded release handoff summary derived from the latest release record, persisted runtime-parity result, and host-readiness artifact, and the CI evidence README calls out that same summary explicitly. That keeps one downloaded focus-case snapshot self-explanatory for parity verdict, replay history, and host blockers while avoiding another export type, extra persistence, or duplicated reviewer-only prose.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

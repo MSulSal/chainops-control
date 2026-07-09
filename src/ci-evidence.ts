@@ -297,6 +297,9 @@ export function buildRuntimeParityEvidenceReadme(summary: RuntimeParityEvidenceS
   if (summary.focusCaseSnapshot.replayAttempt != null) {
     lines.push(`Replay attempt: ${summary.focusCaseSnapshot.replayAttempt}`);
   }
+  lines.push(
+    "Focus-case incident snapshots now embed a release handoff summary covering release status, runtime parity verdict, replay evidence, and host-readiness blockers."
+  );
 
   if (summary.githubRun.runUrl) {
     lines.push(`GitHub Actions run: ${summary.githubRun.runUrl}`);

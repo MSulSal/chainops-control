@@ -132,13 +132,188 @@ test("builds a case incident snapshot with trace-backed guide and stage evidence
           intakeDurationMs: 1620
         }
       }
-    ]
+    ],
+    releaseRecord: {
+      generatedAt: "2026-07-01T18:25:00.000Z",
+      scope: "release_record",
+      filters: { limit: 20 },
+      release: {
+        version: "0.1.0",
+        channel: "local_container_runtime",
+        statusLabel: "Hold",
+        summary: "The current queue contains persisted ingestion or intake failures, so the next release should pause until the failure pattern is understood.",
+        containerImages: {
+          api: "local Dockerfile build via docker compose service api",
+          postgres: "postgres:16-alpine"
+        },
+        reviewerWorkspacePath: "/"
+      },
+      verification: {
+        requiredCommands: [],
+        endpoints: {
+          healthPath: "/health",
+          readyPath: "/ready",
+          demoResetPath: "/demo/reset",
+          workspaceExportPath: "/exports/workspace",
+          telemetryExportPath: "/exports/telemetry",
+          openTelemetryExportPath: "/exports/telemetry/opentelemetry",
+          hostReadinessPath: "/exports/host-readiness",
+          releaseRecordPath: "/exports/releases/latest"
+        },
+        seededScenario: {
+          name: "incident_review_v1",
+          expectedTraceIds: []
+        },
+        seededReplay: {
+          actionPathTemplate: "/cases/:id/replay",
+          expectedOutcome: "Replay the seeded failed-ingestion case."
+        },
+        hostReadiness: {
+          artifactPath: "/exports/host-readiness",
+          failureMode: "blocked until prerequisites are ready",
+          lastResult: {
+            generatedAt: "2026-07-01T18:20:00.000Z",
+            scope: "host_readiness",
+            overall: {
+              statusLabel: "Blocked",
+              summary: "Terraform CLI is unavailable on this host."
+            },
+            runtime: {
+              dockerComposeFile: "docker-compose.yml",
+              terraformSandboxPath: "infra/terraform/sandbox",
+              reviewerWorkspacePath: "/",
+              apiBaseUrl: "http://127.0.0.1:4317"
+            },
+            checks: [],
+            providerSandbox: {
+              status: "blocked",
+              summary: "The first provider-backed sandbox attempt should stay paused on this host.",
+              missingRequirements: ["Terraform CLI is unavailable on this host."],
+              nextSteps: ["Install Terraform and rerun host readiness."]
+            },
+            boundaries: ["Local host readiness only."]
+          }
+        },
+        runtimeParity: {
+          comparedExports: [],
+          ignoredFields: [],
+          failureMode: "treat runtime as stale on drift",
+          lastResult: {
+            checkedAt: "2026-07-01T18:15:00.000Z",
+            baseUrl: "http://127.0.0.1:4317",
+            status: "failed",
+            summary: "The running service failed the seeded runtime parity gate and should be treated as stale.",
+            comparedExports: ["/exports/releases/latest"],
+            ignoredFields: ["generatedAt"],
+            exportChecks: []
+          },
+          reviewArtifact: null,
+          focusCaseReplayArtifact: {
+            fileName: "focus-case-incident-snapshot.json",
+            captureStatus: "captured",
+            replayStatus: "failed_again",
+            summary: "runtime-parity-evidence captured focus-case-incident-snapshot.json successfully for remote replay review (latest replay status: failed again).",
+            artifactHint: "Look for focus-case-incident-snapshot.json inside the runtime-parity-evidence bundle before rerunning the live smoke path."
+          }
+        }
+      },
+      evidence: {
+        summary: {
+          total: 1,
+          pendingReviewCount: 0,
+          failedIngestionCount: 1,
+          approvedCount: 0,
+          rejectedCount: 0,
+          highRiskCount: 0,
+          mediumRiskCount: 0,
+          lowRiskCount: 1
+        },
+        analytics: {
+          statusTransitions: {
+            enteredReviewCount: 0,
+            approvedCount: 0,
+            rejectedCount: 0,
+            failedIngestionCount: 1
+          },
+          reviewLatency: {
+            reviewedCount: 0,
+            averageHours: null,
+            maxHours: null,
+            oldestPendingHours: null
+          },
+          operationalMetrics: {
+            intakePipeline: {
+              completedCount: 0,
+              failedCount: 1,
+              averageDurationMs: null,
+              maxDurationMs: 1620
+            },
+            providerFetch: {
+              completedCount: 0,
+              failedCount: 1,
+              averageDurationMs: null,
+              maxDurationMs: 1550
+            },
+            reviewerDecision: {
+              completedCount: 0,
+              failedCount: 0,
+              averageDurationMs: null,
+              maxDurationMs: null
+            }
+          },
+          timeline: []
+        },
+        releaseGuide: {
+          title: "Investigate before release",
+          tone: "danger",
+          statusLabel: "Hold",
+          summary: "The current queue contains persisted ingestion failures.",
+          releaseDecision: "Keep the current build out of wider rollout.",
+          rollbackDecision: "Rollback if this aligns with a recent provider or runtime change.",
+          actions: [],
+          evidence: []
+        },
+        telemetryHandoffPath: "/exports/telemetry",
+        workspaceSnapshotPath: "/exports/workspace",
+        focusCasePath: "/cases/case-2",
+        focusCaseExportPath: "/exports/cases/case-2",
+        focusTraceId: "trace-timeout-1",
+        replay: {
+          status: "failed_again",
+          summary: "Replay attempt 1 reused the original idempotency key, but the latest provider fetch still ended in timeout.",
+          replayAttempt: 1,
+          casePath: "/cases/case-2",
+          caseExportPath: "/exports/cases/case-2",
+          traceId: "trace-timeout-1",
+          history: [
+            {
+              attempt: 1,
+              status: "failed_again",
+              at: "2026-07-01T18:10:00.000Z",
+              traceId: "trace-replay-failed-1",
+              summary: "Replay attempt 1 repeated the failure through the same API path with timeout."
+            }
+          ]
+        }
+      },
+      rollback: {
+        decision: "Rollback if this aligns with a recent provider or runtime change.",
+        triggers: [],
+        evidence: []
+      },
+      boundaries: []
+    }
   });
 
   assert.equal(snapshot.scope, "case");
   assert.equal(snapshot.incidentGuide.statusLabel, "Incident");
   assert.equal(snapshot.stageTrace[1].statusLabel, "Failed");
   assert.match(snapshot.providerSummary, /error timeout/);
+  assert.equal(snapshot.releaseHandoff.releaseStatusLabel, "Hold");
+  assert.equal(snapshot.releaseHandoff.focusCase.isCurrentFocusCase, true);
+  assert.equal(snapshot.releaseHandoff.runtimeParity.status, "failed");
+  assert.equal(snapshot.releaseHandoff.replay.status, "failed_again");
+  assert.equal(snapshot.releaseHandoff.hostReadiness.statusLabel, "Blocked");
 });
 
 test("builds replay history in the release record evidence", () => {

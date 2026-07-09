@@ -148,6 +148,7 @@ test("captures runtime parity and release evidence into a reviewable artifact bu
   assert.match(readme, /Host-readiness status: Watch/);
   assert.match(readme, /Focus-case snapshot capture: captured/);
   assert.match(readme, /Replay status: recovered/);
+  assert.match(readme, /embed a release handoff summary covering release status, runtime parity verdict, replay evidence, and host-readiness blockers/i);
 
   const runtimeParityArtifact = JSON.parse(await readFile(path.join(outputDir, "runtime-parity-latest.json"), "utf8"));
   assert.equal(runtimeParityArtifact.error, "404 Not Found");

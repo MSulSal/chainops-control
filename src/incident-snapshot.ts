@@ -52,6 +52,31 @@ export type CaseIncidentSnapshot = {
   providerSummary: string;
   stageTrace: ReturnType<typeof getCaseStageTrace>;
   incidentGuide: ReturnType<typeof getCaseOperationalGuide>;
+  releaseHandoff: {
+    summary: string;
+    releaseRecordPath: "/exports/releases/latest";
+    releaseStatusLabel: ReleaseRecordSnapshot["release"]["statusLabel"];
+    focusCase: {
+      isCurrentFocusCase: boolean;
+      focusCasePath: string | null;
+      focusCaseExportPath: string | null;
+    };
+    runtimeParity: {
+      status: RuntimeParityResult["status"] | "not_recorded";
+      checkedAt: string | null;
+      summary: string;
+      artifactPath: "/exports/runtime-parity/latest";
+      reviewHint: string | null;
+    };
+    replay: ReleaseRecordSnapshot["evidence"]["replay"];
+    hostReadiness: {
+      statusLabel: HostReadinessSnapshot["overall"]["statusLabel"] | "Not recorded";
+      summary: string;
+      artifactPath: "/exports/host-readiness";
+      missingRequirements: string[];
+      nextSteps: string[];
+    };
+  };
   auditEvents: AuditEvent[];
 };
 
@@ -282,7 +307,14 @@ export function buildCaseIncidentSnapshot(input: {
   generatedAt?: string;
   caseRecord: CaseRecord;
   auditEvents: AuditEvent[];
+  releaseRecord?: ReleaseRecordSnapshot | null;
 }): CaseIncidentSnapshot {
+  const releaseRecord = input.releaseRecord ?? null;
+  const runtimeParityResult = releaseRecord?.verification.runtimeParity.lastResult ?? null;
+  const hostReadinessSnapshot = releaseRecord?.verification.hostReadiness.lastResult ?? null;
+  const focusCasePath = releaseRecord?.evidence.focusCasePath ?? null;
+  const focusCaseExportPath = releaseRecord?.evidence.focusCaseExportPath ?? null;
+
   return {
     generatedAt: input.generatedAt ?? new Date().toISOString(),
     scope: "case",
@@ -290,6 +322,45 @@ export function buildCaseIncidentSnapshot(input: {
     providerSummary: getProviderSummary(input.caseRecord.sourceMetadata),
     stageTrace: getCaseStageTrace(input.caseRecord, input.auditEvents),
     incidentGuide: getCaseOperationalGuide(input.caseRecord, input.auditEvents),
+    releaseHandoff: {
+      summary:
+        releaseRecord?.release.summary ??
+        "Release handoff context is unavailable for this case export. Fetch /exports/releases/latest separately.",
+      releaseRecordPath: "/exports/releases/latest",
+      releaseStatusLabel: releaseRecord?.release.statusLabel ?? "Watch",
+      focusCase: {
+        isCurrentFocusCase: focusCasePath === `/cases/${input.caseRecord.id}`,
+        focusCasePath,
+        focusCaseExportPath
+      },
+      runtimeParity: {
+        status: runtimeParityResult?.status ?? "not_recorded",
+        checkedAt: runtimeParityResult?.checkedAt ?? null,
+        summary:
+          runtimeParityResult?.summary ??
+          "No persisted runtime parity result is attached to the latest release record.",
+        artifactPath: "/exports/runtime-parity/latest",
+        reviewHint: runtimeParityResult?.ciEvidence?.reviewHint ?? null
+      },
+      replay: releaseRecord?.evidence.replay ?? {
+        status: "not_applicable",
+        summary: "The latest release record did not attach replay evidence to this case export.",
+        replayAttempt: null,
+        casePath: null,
+        caseExportPath: null,
+        traceId: null,
+        history: []
+      },
+      hostReadiness: {
+        statusLabel: hostReadinessSnapshot?.overall.statusLabel ?? "Not recorded",
+        summary:
+          hostReadinessSnapshot?.overall.summary ??
+          "No host-readiness artifact is attached to the latest release record.",
+        artifactPath: "/exports/host-readiness",
+        missingRequirements: hostReadinessSnapshot?.providerSandbox.missingRequirements ?? [],
+        nextSteps: hostReadinessSnapshot?.providerSandbox.nextSteps ?? []
+      }
+    },
     auditEvents: input.auditEvents
   };
 }
