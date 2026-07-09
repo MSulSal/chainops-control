@@ -154,6 +154,10 @@ The next replay-evidence step still stays on that same release-record contract i
 
 The next remote-review step still stays on the persisted runtime-parity and existing case-export contract instead of inventing a replay-only artifact shape. The runtime smoke script now records the release-record replay summary directly on the parity artifact, and `npm run capture:ci-evidence` downloads the matching focus-case incident snapshot into the same GitHub Actions bundle as parity, release-record, and host-readiness evidence. That keeps remote replay review attached to one seeded focus case and one downloadable artifact path, while avoiding a second summary endpoint, CI-only fixture prose, or a broader evidence store.
 
+## 2026-07-09 replay-capture visibility decision
+
+The next release-evidence step still stays on that same release-record and parity-artifact contract instead of adding a separate CI bundle inspector. `GET /exports/releases/latest` now surfaces a structured focus-case replay-artifact summary, and the reviewer workspace plus case-detail release panel render that same status and the explicit `focus-case-incident-snapshot.json` hint before download. That keeps remote reviewers on one artifact path while making it obvious whether the latest CI bundle actually carries the replay audit trail they expect.
+
 ## 2026-06-29 slice decision
 
 The storage boundary now uses PostgreSQL directly so the project can defend SQL schema work, containerized runtime setup, CI service dependencies, and replay-safe intake behavior. The service keeps the same JSON request body and adds `Idempotency-Key` as an optional header so the duplicate-intake guarantee is visible without forcing a contract rewrite.

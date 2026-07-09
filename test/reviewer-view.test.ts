@@ -12,6 +12,8 @@ import {
   getProviderSummary,
   getReviewArtifactCaptureSummary,
   getReviewArtifactExpectedFiles,
+  getReviewArtifactFocusCaseArtifactHint,
+  getReviewArtifactReplayCaptureSummary,
   getReviewLatencyCards,
   getTimelineBars,
   getQueueSummaryCards,
@@ -794,6 +796,9 @@ test("summarizes CI host-readiness capture and expected artifact files", () => {
   };
 
   assert.match(getReviewArtifactCaptureSummary(reviewArtifact), /captured host-readiness successfully \(Watch\)/i);
+  assert.match(getReviewArtifactReplayCaptureSummary(reviewArtifact), /captured focus-case-incident-snapshot\.json successfully/i);
+  assert.match(getReviewArtifactReplayCaptureSummary(reviewArtifact), /latest replay status: recovered/i);
+  assert.match(getReviewArtifactFocusCaseArtifactHint(reviewArtifact), /look for focus-case-incident-snapshot\.json/i);
   assert.equal(
     getReviewArtifactExpectedFiles(reviewArtifact),
     "runtime-parity-latest.json, latest-release-record.json, host-readiness.json, focus-case-incident-snapshot.json, ci-evidence-summary.json, README.md"
@@ -809,5 +814,17 @@ test("summarizes CI host-readiness capture and expected artifact files", () => {
       }
     }),
     /did not capture host-readiness successfully/i
+  );
+  assert.match(
+    getReviewArtifactReplayCaptureSummary({
+      ...reviewArtifact,
+      captures: {
+        ...reviewArtifact.captures,
+        focusCaseSnapshot: {
+          status: "missing"
+        }
+      }
+    }),
+    /did not expose a focus-case incident export/i
   );
 });

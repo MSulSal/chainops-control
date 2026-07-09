@@ -15,6 +15,8 @@ import {
   getCaseStageTrace,
   getCaseListSubtitle,
   getProviderSummary,
+  getReviewArtifactFocusCaseArtifactHint,
+  getReviewArtifactReplayCaptureSummary,
   getWorkspaceOperationalGuide
 } from "./reviewer-view.ts";
 import type { HostReadinessSnapshot } from "./host-readiness.ts";
@@ -206,6 +208,13 @@ export type ReleaseRecordSnapshot = {
       failureMode: string;
       lastResult: RuntimeParityResult | null;
       reviewArtifact: RuntimeParityCiEvidence | null;
+      focusCaseReplayArtifact: {
+        fileName: "focus-case-incident-snapshot.json";
+        captureStatus: "captured" | "missing" | "unavailable";
+        replayStatus: "recovered" | "failed_again" | "not_attempted" | "not_applicable" | null;
+        summary: string;
+        artifactHint: string;
+      };
     };
   };
   evidence: {
@@ -417,6 +426,7 @@ export function buildReleaseRecordSnapshot(input: {
     input.cases.find((caseItem) => caseItem.status === "pending_review") ??
     input.cases[0];
   const replayEvidence = buildReplayEvidence(focusCaseDetail);
+  const reviewArtifact = input.lastRuntimeParityResult?.ciEvidence ?? null;
 
   return {
     generatedAt: input.generatedAt ?? new Date().toISOString(),
@@ -502,7 +512,15 @@ export function buildReleaseRecordSnapshot(input: {
         failureMode:
           "Treat the runtime as stale when any required export is missing or diverges from the current seeded parity contract after normalizing the documented time-relative fields.",
         lastResult: input.lastRuntimeParityResult ?? null,
-        reviewArtifact: input.lastRuntimeParityResult?.ciEvidence ?? null
+        reviewArtifact,
+        focusCaseReplayArtifact: {
+          fileName: "focus-case-incident-snapshot.json",
+          captureStatus: reviewArtifact?.captures?.focusCaseSnapshot.status ?? "unavailable",
+          replayStatus:
+            reviewArtifact?.captures?.focusCaseSnapshot.replayStatus ?? replayEvidence.status,
+          summary: getReviewArtifactReplayCaptureSummary(reviewArtifact),
+          artifactHint: getReviewArtifactFocusCaseArtifactHint(reviewArtifact)
+        }
       }
     },
     evidence: {

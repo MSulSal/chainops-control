@@ -47,6 +47,7 @@ A human-approved operations workspace for investigating public wallet activity, 
 - Slice 29: exercised that replay path through the seeded smoke and release-evidence flow, added replay-aware release-record fields, and kept the replay story anchored to one exported focus case through the live HTTP boundary.
 - Slice 30: extended the seeded replay path to force one deterministic repeated failure before recovery, then surfaced replay outcome history in the release record and both reviewer release-evidence views so operators can compare failed-again versus recovered attempts without leaving the product.
 - Slice 31: threaded that replay summary into the persisted runtime-parity artifact and GitHub Actions evidence bundle, then captured the matching focus-case incident snapshot so remote reviewers can inspect the same failed-again versus recovered story without opening the live app.
+- Slice 32: surfaced CI replay-evidence capture status plus an explicit `focus-case-incident-snapshot.json` artifact hint in the release record, reviewer workspace, and case-detail release views so remote reviewers can confirm the bundle contains replay history before downloading it.
 
 ## Success evidence
 

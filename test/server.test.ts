@@ -921,6 +921,11 @@ test("exports a latest release record artifact from the current filtered queue",
   assert.equal(snapshot.verification.runtimeParity.lastResult?.exportChecks[1]?.status, "missing");
   assert.equal(snapshot.verification.runtimeParity.reviewArtifact?.artifactName, "runtime-parity-evidence");
   assert.equal(snapshot.verification.runtimeParity.reviewArtifact?.captures?.hostReadiness.status, "captured");
+  assert.equal(snapshot.verification.runtimeParity.focusCaseReplayArtifact.fileName, "focus-case-incident-snapshot.json");
+  assert.equal(snapshot.verification.runtimeParity.focusCaseReplayArtifact.captureStatus, "captured");
+  assert.equal(snapshot.verification.runtimeParity.focusCaseReplayArtifact.replayStatus, "not_attempted");
+  assert.match(snapshot.verification.runtimeParity.focusCaseReplayArtifact.summary, /captured focus-case-incident-snapshot\.json successfully/i);
+  assert.match(snapshot.verification.runtimeParity.focusCaseReplayArtifact.artifactHint, /look for focus-case-incident-snapshot\.json/i);
   assert.equal(
     snapshot.verification.runtimeParity.reviewArtifact?.run.runUrl,
     "https://github.com/MSulSal/chainops-control/actions/runs/123456789"

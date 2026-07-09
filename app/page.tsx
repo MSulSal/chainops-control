@@ -20,7 +20,9 @@ import {
   formatTimestamp,
   getActiveFilterChips,
   getReviewArtifactCaptureSummary,
+  getReviewArtifactFocusCaseArtifactHint,
   getReviewArtifactExpectedFiles,
+  getReviewArtifactReplayCaptureSummary,
   getWorkspaceOperationalGuide,
   getOperationalMetricCards,
   getQueueAnalyticsCards,
@@ -64,6 +66,7 @@ export default async function ReviewerWorkspacePage({
   const runtimeParityCiEvidence = runtimeParityResult?.ciEvidence ?? null;
   const releaseRecordRuntimeParity = releaseRecord?.verification.runtimeParity.lastResult ?? null;
   const releaseRecordReviewArtifact = releaseRecord?.verification.runtimeParity.reviewArtifact ?? null;
+  const releaseRecordFocusCaseReplayArtifact = releaseRecord?.verification.runtimeParity.focusCaseReplayArtifact ?? null;
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -349,6 +352,13 @@ export default async function ReviewerWorkspacePage({
                 {getReviewArtifactCaptureSummary(releaseRecordReviewArtifact)}
               </span>
             </div>
+            <div className="fact">
+              <strong>CI replay evidence</strong>
+              <span className="muted">
+                {releaseRecordFocusCaseReplayArtifact?.summary ??
+                  getReviewArtifactReplayCaptureSummary(releaseRecordReviewArtifact)}
+              </span>
+            </div>
           </div>
           {releaseRecordRuntimeParity ? (
             <div
@@ -395,6 +405,7 @@ export default async function ReviewerWorkspacePage({
                   <li>{`Rollback decision: ${releaseRecord.rollback.decision}`}</li>
                   <li>{`Provider-backed host status: ${releaseRecordHostReadiness?.overall.statusLabel ?? "Unavailable"}`}</li>
                   <li>{`CI host-readiness capture: ${releaseRecordReviewArtifact?.captures?.hostReadiness.statusLabel ?? releaseRecordReviewArtifact?.captures?.hostReadiness.status ?? "Not recorded"}`}</li>
+                  <li>{`CI replay-evidence capture: ${releaseRecordFocusCaseReplayArtifact?.captureStatus ?? "Not recorded"} (${releaseRecordFocusCaseReplayArtifact?.replayStatus ?? "unknown"}).`}</li>
                 </ul>
               </article>
               <article className="metric-card">
@@ -488,8 +499,22 @@ export default async function ReviewerWorkspacePage({
                     <span className="muted">{getReviewArtifactCaptureSummary(releaseRecordReviewArtifact)}</span>
                   </div>
                   <div className="fact">
+                    <strong>CI replay-evidence capture</strong>
+                    <span className="muted">
+                      {releaseRecordFocusCaseReplayArtifact?.summary ??
+                        getReviewArtifactReplayCaptureSummary(releaseRecordReviewArtifact)}
+                    </span>
+                  </div>
+                  <div className="fact">
                     <strong>Expected bundle files</strong>
                     <span className="mono">{getReviewArtifactExpectedFiles(releaseRecordReviewArtifact)}</span>
+                  </div>
+                  <div className="fact">
+                    <strong>Focus-case artifact hint</strong>
+                    <span className="muted">
+                      {releaseRecordFocusCaseReplayArtifact?.artifactHint ??
+                        getReviewArtifactFocusCaseArtifactHint(releaseRecordReviewArtifact)}
+                    </span>
                   </div>
                   <div className="fact">
                     <strong>Review hint</strong>

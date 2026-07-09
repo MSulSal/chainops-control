@@ -83,6 +83,7 @@ Expected result:
 - The record also embeds the latest host-readiness snapshot and `/exports/host-readiness` path so provider-backed sandbox blockers are reviewed from the same release artifact instead of a separate checklist.
 - The record now also embeds replay evidence for the current focus case, including whether replay recovered, failed again, or has not been attempted yet, plus direct links back to the case page and case export.
 - The record now also keeps replay outcome history for the focus case, so a failed-again attempt and a later recovery can be compared from the same JSON artifact and reviewer release panel.
+- The record now also surfaces whether CI captured `focus-case-incident-snapshot.json`, plus a direct artifact hint, so remote reviewers can confirm the replay audit trail is present before downloading the bundle.
 
 Latest runtime-parity artifact:
 
@@ -129,6 +130,7 @@ Expected result:
 - It writes `artifacts/runtime-parity/ci-evidence-summary.json` and `artifacts/runtime-parity/README.md` so a reviewer can inspect the parity status, release-record capture status, focus-case capture status, host-readiness capture status, and matching GitHub Actions run metadata after downloading the CI artifact.
 - The CI workflow uploads that folder as the `runtime-parity-evidence` artifact on every run, including failed parity runs.
 - The reviewer workspace and release record now reuse the same run URL, artifact-name hints, expected bundle files, replay summary, and host-readiness capture status from the persisted parity result, so the operator can move from a stale verdict to the matching GitHub Actions bundle without opening the workflow file first.
+- The reviewer workspace and case-detail release panel now also surface the replay-evidence capture verdict plus the exact `focus-case-incident-snapshot.json` filename so a remote reviewer knows which artifact file to open once the bundle is downloaded.
 - The reviewer workspace also previews the latest release record from that same contract, including version, release status, required commands, focus-case links, rollback triggers, and product boundaries, before any JSON download is needed.
 
 ## Terraform sandbox
@@ -188,12 +190,12 @@ Expected result:
 17. Use `Export OpenTelemetry seam` from the workspace and confirm the JSON includes deterministic hex trace/span IDs, local spans for each recorded workflow stage, aggregate metrics, and explicit no-collector boundaries.
 18. Use `Export latest release record` from the workspace and confirm the JSON includes the current version, the required verification commands, and rollback evidence tied to a visible trace or case export.
 19. Confirm the release record section shows the last runtime parity result, including pass/fail status, checked base URL, per-export evidence, and the GitHub Actions artifact/run hint when the latest parity result came from CI.
-20. Confirm the release record section also previews the required commands, focus-case links, rollback triggers, host-readiness blockers, CI host-readiness capture status, expected bundle files, and boundaries from the same exported artifact instead of only download links.
+20. Confirm the release record section also previews the required commands, focus-case links, rollback triggers, host-readiness blockers, CI host-readiness capture status, CI replay-evidence capture status, expected bundle files, and boundaries from the same exported artifact instead of only download links.
 21. Use `Export latest runtime parity` when available and confirm the JSON matches the pass/fail summary shown in the release record section.
 22. Open the focus case from the release record, confirm the case-detail page shows whether the current case is the release anchor, and verify the rollback drill evidence matches the exported release record.
 23. From the case-detail release-evidence panel, confirm `Export latest release record`, `Export telemetry handoff`, and the focus-case snapshot links all resolve without leaving the API-backed evidence path.
 24. Use `Export host-readiness artifact` from the workspace and confirm the JSON reports the current Docker, Compose, Terraform, and live-provider prerequisite state instead of pretending the host is ready for a provider-backed sandbox.
-25. Open a case detail and confirm the release-evidence panel now includes the release-linked host-readiness summary plus a direct `Export host-readiness artifact` link.
+25. Open a case detail and confirm the release-evidence panel now includes the release-linked host-readiness summary, the replay-evidence capture summary, the `focus-case-incident-snapshot.json` artifact hint, and a direct `Export host-readiness artifact` link.
 
 ## Human approval
 

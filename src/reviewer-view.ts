@@ -60,6 +60,8 @@ export type ReplayStatus = {
   attemptNumber: number;
 };
 
+const FOCUS_CASE_SNAPSHOT_ARTIFACT_FILE = "focus-case-incident-snapshot.json";
+
 export function getStatusCopy(status: CaseStatus): StatusCopy {
   switch (status) {
     case "approved":
@@ -615,6 +617,41 @@ export function getReviewArtifactExpectedFiles(reviewArtifact: RuntimeParityCiEv
   return reviewArtifact.artifactFiles.join(", ");
 }
 
+export function getReviewArtifactReplayCaptureSummary(reviewArtifact: RuntimeParityCiEvidence | null): string {
+  if (!reviewArtifact) {
+    return "No GitHub Actions review artifact is attached to the latest parity result.";
+  }
+
+  const focusCaseCapture = reviewArtifact.captures?.focusCaseSnapshot;
+  if (!focusCaseCapture) {
+    return `${reviewArtifact.artifactName} is attached, but replay-evidence capture status was not recorded on this parity artifact.`;
+  }
+
+  const replayStatus = formatReplayStatusLabel(focusCaseCapture.replayStatus);
+
+  if (focusCaseCapture.status === "captured") {
+    return `${reviewArtifact.artifactName} captured ${FOCUS_CASE_SNAPSHOT_ARTIFACT_FILE} successfully for remote replay review${replayStatus}.`;
+  }
+
+  if (focusCaseCapture.status === "missing") {
+    return `${reviewArtifact.artifactName} expected ${FOCUS_CASE_SNAPSHOT_ARTIFACT_FILE}, but the latest release record did not expose a focus-case incident export${replayStatus}.`;
+  }
+
+  return `${reviewArtifact.artifactName} did not capture ${FOCUS_CASE_SNAPSHOT_ARTIFACT_FILE} successfully; inspect the bundle or rerun CI evidence capture${replayStatus}.`;
+}
+
+export function getReviewArtifactFocusCaseArtifactHint(reviewArtifact: RuntimeParityCiEvidence | null): string {
+  if (!reviewArtifact) {
+    return "No GitHub Actions review artifact is attached to the latest parity result.";
+  }
+
+  if (!reviewArtifact.artifactFiles.includes(FOCUS_CASE_SNAPSHOT_ARTIFACT_FILE)) {
+    return `${FOCUS_CASE_SNAPSHOT_ARTIFACT_FILE} is not listed in the recorded artifact file set for ${reviewArtifact.artifactName}.`;
+  }
+
+  return `Look for ${FOCUS_CASE_SNAPSHOT_ARTIFACT_FILE} inside the ${reviewArtifact.artifactName} bundle before rerunning the live smoke path.`;
+}
+
 function formatHours(value: number | null): string {
   if (value == null) {
     return "n/a";
@@ -705,5 +742,24 @@ function getReleaseStatusTone(statusLabel: ReleaseRecordSnapshot["release"]["sta
       return "success";
     default:
       return "neutral";
+  }
+}
+
+function formatReplayStatusLabel(
+  status: "recovered" | "failed_again" | "not_attempted" | "not_applicable" | undefined
+): string {
+  if (!status) {
+    return "";
+  }
+
+  switch (status) {
+    case "failed_again":
+      return " (latest replay status: failed again)";
+    case "not_attempted":
+      return " (latest replay status: not attempted)";
+    case "not_applicable":
+      return " (latest replay status: not applicable)";
+    default:
+      return ` (latest replay status: ${status})`;
   }
 }

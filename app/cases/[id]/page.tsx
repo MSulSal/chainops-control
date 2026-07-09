@@ -18,6 +18,8 @@ import {
   formatTimestamp,
   getCaseDetailCallout,
   getProviderSummary,
+  getReviewArtifactFocusCaseArtifactHint,
+  getReviewArtifactReplayCaptureSummary,
   getStatusCopy
 } from "../../../src/reviewer-view.ts";
 import { CaseActionSubmitButton, ReviewSubmitButton } from "./review-submit";
@@ -54,6 +56,8 @@ export default async function CaseDetailPage({
   const releaseRecordSummary = releaseRecord ? getCaseReleaseRecordSummary(detail.caseRecord, releaseRecord) : null;
   const releaseRecordHostReadiness = releaseRecord?.verification.hostReadiness.lastResult ?? null;
   const releaseRecordRuntimeParity = releaseRecord?.verification.runtimeParity.lastResult ?? null;
+  const releaseRecordReviewArtifact = releaseRecord?.verification.runtimeParity.reviewArtifact ?? null;
+  const releaseRecordFocusCaseReplayArtifact = releaseRecord?.verification.runtimeParity.focusCaseReplayArtifact ?? null;
   const flash = readStringParam(resolvedSearchParams.flash);
   const error = readStringParam(resolvedSearchParams.error);
 
@@ -315,6 +319,13 @@ export default async function CaseDetailPage({
                     : "No host-readiness artifact is attached to the latest release record."}
                 </span>
               </div>
+              <div className="fact">
+                <strong>CI replay evidence</strong>
+                <span className="muted">
+                  {releaseRecordFocusCaseReplayArtifact?.summary ??
+                    getReviewArtifactReplayCaptureSummary(releaseRecordReviewArtifact)}
+                </span>
+              </div>
             </div>
             {releaseRecord ? (
               <div className="detail-grid detail-grid-balanced">
@@ -349,6 +360,7 @@ export default async function CaseDetailPage({
                     <li>
                       <a href={releaseRecord.verification.hostReadiness.artifactPath}>Export host-readiness artifact</a>
                     </li>
+                    <li>{releaseRecordFocusCaseReplayArtifact?.artifactHint ?? getReviewArtifactFocusCaseArtifactHint(releaseRecordReviewArtifact)}</li>
                   </ul>
                 </article>
               </div>

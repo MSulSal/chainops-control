@@ -116,3 +116,7 @@ The next replay-evidence step keeps the comparison model on the existing release
 ## Replay-aware CI evidence tradeoff
 
 The next remote-review step reuses the persisted runtime-parity artifact plus the existing focus-case export instead of creating a replay-only bundle or a second release-summary endpoint. The runtime smoke path now records the replay summary on the parity artifact, and CI evidence capture downloads the matching focus-case incident snapshot into the same artifact folder as parity, release-record, and host-readiness evidence. That keeps remote review attached to one downloadable package and one seeded focus case, while preserving the honest boundary that this is still local runtime evidence rather than hosted monitoring or a separate evidence service.
+
+## Replay-capture visibility tradeoff
+
+The next reviewability step keeps the operator on the same release-record and parity-artifact contract instead of adding a separate CI-bundle inspection endpoint. The release record now exposes whether CI captured `focus-case-incident-snapshot.json`, what replay status that artifact reflects, and a direct artifact hint that the reviewer workspace and case-detail page both render. The tradeoff is that reviewers still download the bundle for raw JSON, but they no longer have to guess whether the replay audit trail is present or which file contains it.

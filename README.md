@@ -37,6 +37,7 @@ ChainOps Control is a case-operations service for reviewing public wallet activi
 - Seeded smoke and release evidence that now execute that replay path end to end, so the latest release record can point to one recovered-vs-repeat replay story through the live HTTP boundary.
 - Replay-aware release evidence that now keeps a comparison-friendly replay outcome history, so reviewers can see a failed-again attempt and a later recovery from the same exported record and UI flow.
 - Replay-aware runtime parity and CI evidence that now also carry the focus-case replay summary plus a downloadable focus-case incident snapshot, so remote reviewers can inspect that failed-again versus recovered comparison from the artifact bundle alone.
+- Release-record and reviewer-workspace evidence that now surface CI replay-evidence capture status plus a direct hint to `focus-case-incident-snapshot.json`, so remote reviewers can confirm the bundle carries the replay audit trail before downloading it.
 - A host-readiness export plus reviewer-workspace diagnostics that report Docker, Compose, Terraform, and live-provider prerequisites before the first provider-backed sandbox attempt is treated as runnable on the current host.
 - A latest-release record that now embeds the current host-readiness snapshot and export path so runtime parity, Docker/Terraform blockers, and provider-backed sandbox prerequisites stay attached to one bounded release artifact.
 - Duplicate-intake protection through the `Idempotency-Key` header.
